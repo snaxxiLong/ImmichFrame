@@ -652,8 +652,8 @@
 		/>
 
 		{#if deleteCandidates}
-			<div class="fixed inset-0 z-[200] grid place-items-center bg-black/70">
-				<div class="rounded-2xl bg-neutral-900 p-6 text-center text-white shadow-2xl max-w-[90vw]">
+			<div class="fixed inset-0 z-[200] grid place-items-center" style="background-color: rgba(0, 0, 0, 0.75)">
+				<div class="rounded-2xl p-6 text-center shadow-2xl max-w-[90vw]" style="background-color: #171717; color: #ffffff">
 					<p class="mb-4 text-2xl font-semibold">
 						{isGerman ? 'Foto in den Papierkorb verschieben?' : 'Move photo to trash?'}
 					</p>
@@ -664,7 +664,7 @@
 									<img src={candidate.url} alt="" class="max-h-[40vh] max-w-[38vw] rounded-lg object-contain" />
 								{/if}
 								<button
-									class="rounded-xl bg-red-600 px-6 py-3 text-xl font-semibold disabled:opacity-50"
+									class="rounded-xl px-6 py-3 text-xl font-semibold disabled:opacity-50" style="background-color: #dc2626"
 									disabled={deleteBusy}
 									onclick={() => confirmDelete(candidate.asset)}
 								>
@@ -674,16 +674,16 @@
 						{/each}
 					</div>
 					{#if deleteError}
-						<p class="mt-4 text-red-400">{deleteError}</p>
+						<p class="mt-4" style="color: #f87171">{deleteError}</p>
 					{/if}
 					<button
-						class="mt-6 rounded-xl bg-neutral-700 px-6 py-3 text-xl"
+						class="mt-6 rounded-xl px-6 py-3 text-xl" style="background-color: #404040"
 						disabled={deleteBusy}
 						onclick={closeDeleteDialog}
 					>
 						{isGerman ? 'Abbrechen' : 'Cancel'}
 					</button>
-					<p class="mt-3 text-sm text-neutral-400">
+					<p class="mt-3 text-sm" style="color: #a3a3a3">
 						{isGerman
 							? 'Gelöschte Fotos bleiben 30 Tage im Immich-Papierkorb.'
 							: 'Deleted photos stay in the Immich trash for 30 days.'}
