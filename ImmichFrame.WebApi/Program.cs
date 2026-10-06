@@ -10,6 +10,8 @@ using ImmichFrame.WebApi.Helpers.Config;
 using ImmichFrame.WebApi.Models;
 using ImmichFrame.WebApi.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.ResponseCompression;
+using Microsoft.AspNetCore.StaticFiles;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.OpenApi.Models;
@@ -119,7 +121,29 @@ builder.Services.AddAuthentication("ImmichFrameScheme")
     .AddScheme<AuthenticationSchemeOptions, ImmichFrameAuthenticationHandler>("ImmichFrameScheme", options => { })
     .AddScheme<AuthenticationSchemeOptions, ImmichFrameAdminAuthenticationHandler>(ImmichFrameAdminAuthenticationHandler.SchemeName, options => { });
 
+// Frames on slow Wi-Fi load the web app on every start, so compress text assets.
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.Providers.Add<BrotliCompressionProvider>();
+    options.Providers.Add<GzipCompressionProvider>();
+    options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(new[] { "image/svg+xml" });
+});
+
 var app = builder.Build();
+
+// SvelteKit puts content-hashed files under /_app/immutable, so they can be cached forever.
+// Everything else (index.html, manifest, ...) is revalidated so server updates show up right away.
+var staticFileOptions = new StaticFileOptions
+{
+    OnPrepareResponse = ctx =>
+    {
+        ctx.Context.Response.Headers.CacheControl =
+            ctx.Context.Request.Path.StartsWithSegments("/_app/immutable")
+                ? "public, max-age=31536000, immutable"
+                : "no-cache";
+    }
+};
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -128,7 +152,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseStaticFiles();
+app.UseResponseCompression();
+app.UseStaticFiles(staticFileOptions);
 if (app.Environment.IsProduction())
 {
     app.UseDefaultFiles();
@@ -151,7 +176,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-app.MapFallbackToFile("/index.html");
+app.MapFallbackToFile("/index.html", staticFileOptions);
 
 // Skipped when tests replace ISettingsProvider with a stub
 if (app.Services.GetRequiredService<ISettingsProvider>() is SettingsService settingsService)
