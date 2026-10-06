@@ -52,6 +52,9 @@ public class LiveGeneralSettings(ISettingsProvider _provider) : IGeneralSettings
     public string? WeatherApiKey => Current.WeatherApiKey;
     public string? WeatherLatLong => Current.WeatherLatLong;
     public string? UnitSystem => Current.UnitSystem;
+    public bool AutoBrightness => Current.AutoBrightness;
+    public int AutoBrightnessMin => Current.AutoBrightnessMin;
+    public int AutoBrightnessMax => Current.AutoBrightnessMax;
     public string? Webhook => Current.Webhook;
     public string? AuthenticationSecret => Current.AuthenticationSecret;
     public string? AdminPassword => Current.AdminPassword;

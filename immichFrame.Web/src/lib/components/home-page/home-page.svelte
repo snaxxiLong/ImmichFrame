@@ -502,6 +502,24 @@
 		window.setTimeout(() => (window as unknown as { hideSplash?: () => void }).hideSplash?.(), SPLASH_SETTLE_MS);
 	});
 
+	// Daylight-based screen brightness: the server derives it from the outdoor solar radiation and
+	// the Android app applies it through its JS bridge. Other clients have no bridge and skip this.
+	const BRIGHTNESS_INTERVAL_MS = 5 * 60 * 1000;
+	let brightnessInterval: number | undefined;
+
+	async function updateScreenBrightness() {
+		const app = (window as unknown as { ImmichFrameApp?: { setBrightness?: (value: number) => void } })
+			.ImmichFrameApp;
+		if (!app?.setBrightness) return;
+		try {
+			const result = await api.getScreenBrightness($clientIdentifierStore);
+			// -1 hands control back to the system brightness when the feature is switched off.
+			app.setBrightness(result.enabled ? result.brightness : -1);
+		} catch (err) {
+			console.error('Error fetching screen brightness:', err);
+		}
+	}
+
 	// The configured theme applies to the slideshow only — the admin UI keeps
 	// the @immich/ui defaults.
 	$effect(() => applyFrameColors($configStore));
@@ -532,10 +550,14 @@
 
 		getNextAssets();
 
+		updateScreenBrightness();
+		brightnessInterval = window.setInterval(updateScreenBrightness, BRIGHTNESS_INTERVAL_MS);
+
 		return () => {
 			window.removeEventListener('mousemove', showCursor);
 			window.removeEventListener('click', showCursor);
 			window.clearInterval(refreshInterval);
+			window.clearInterval(brightnessInterval);
 			window.clearTimeout(timeoutId);
 			window.clearTimeout(videoStallTimeout);
 			window.clearTimeout(watchdogTimer);

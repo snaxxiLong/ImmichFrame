@@ -69,6 +69,9 @@ public class GeneralSettings : IGeneralSettings
     public string? WeatherApiKey { get; set; } = string.Empty;
     public string? UnitSystem { get; set; } = "imperial";
     public string? WeatherLatLong { get; set; } = "40.7128,74.0060";
+    public bool AutoBrightness { get; set; } = false;
+    public int AutoBrightnessMin { get; set; } = 15;
+    public int AutoBrightnessMax { get; set; } = 100;
     public string? Webhook { get; set; }
     public string? AuthenticationSecret { get; set; }
     public string? AdminPassword { get; set; }

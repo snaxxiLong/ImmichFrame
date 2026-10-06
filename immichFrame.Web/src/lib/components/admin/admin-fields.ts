@@ -123,6 +123,33 @@ export const generalSections: SectionDef[] = [
 		]
 	},
 	{
+		title: 'Screen brightness',
+		fields: [
+			{
+				key: 'autoBrightness',
+				label: 'Adjust brightness to daylight',
+				type: 'checkbox',
+				help: 'Uses the outdoor solar radiation at the weather location (sun position and clouds). Only works in the ImmichFrame Android app.'
+			},
+			{
+				key: 'autoBrightnessMin',
+				label: 'Minimum brightness (%)',
+				type: 'number',
+				min: 1,
+				max: 100,
+				help: 'Used at night.'
+			},
+			{
+				key: 'autoBrightnessMax',
+				label: 'Maximum brightness (%)',
+				type: 'number',
+				min: 1,
+				max: 100,
+				help: 'Used in bright daylight.'
+			}
+		]
+	},
+	{
 		title: 'Server',
 		fields: [
 			{ key: 'downloadImages', label: 'Download images (cache on disk)', type: 'checkbox' },

@@ -50,6 +50,20 @@ export interface WeatherForecastEntry {
 
 const authHeaders = () => ({ Authorization: 'Bearer ' + get(authSecretStore) });
 
+export interface ScreenBrightness {
+	enabled: boolean;
+	brightness: number;
+	irradiance?: number | null;
+}
+
+export const getScreenBrightness = async (clientIdentifier?: string) => {
+	const params = new URLSearchParams();
+	if (clientIdentifier) params.set('clientIdentifier', clientIdentifier);
+	const res = await fetch(`/api/Weather/Brightness?${params}`, { headers: authHeaders() });
+	if (!res.ok) throw new Error(`Brightness request failed: ${res.status}`);
+	return (await res.json()) as ScreenBrightness;
+};
+
 export const getWeatherForecast = async (count: number, clientIdentifier?: string) => {
 	const params = new URLSearchParams({ count: String(count) });
 	if (clientIdentifier) params.set('clientIdentifier', clientIdentifier);

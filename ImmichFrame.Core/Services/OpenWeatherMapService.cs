@@ -9,6 +9,7 @@ public class OpenWeatherMapService : IWeatherService
     private readonly IGeneralSettings _settings;
     private readonly IApiCache _weatherCache = new ApiCache(TimeSpan.FromMinutes(5));
     private readonly IApiCache _forecastCache = new ApiCache(TimeSpan.FromMinutes(15));
+    private readonly IApiCache _brightnessCache = new ApiCache(TimeSpan.FromMinutes(15));
     private static readonly HttpClient ForecastHttpClient = new() { Timeout = TimeSpan.FromSeconds(15) };
     public OpenWeatherMapService(IGeneralSettings settings)
     {
@@ -140,4 +141,86 @@ public class OpenWeatherMapService : IWeatherService
         95 or 96 or 99 => german ? "Gewitter" : "Thunderstorm",
         _ => ""
     };
+
+    // Global horizontal irradiance at which the screen reaches its maximum brightness. A bright
+    // overcast day is around 200-300 W/m², direct midday sun in summer 700-900 W/m².
+    private const double FullBrightnessIrradiance = 500d;
+
+    public async Task<ScreenBrightness> GetScreenBrightness()
+    {
+        if (!_settings.AutoBrightness)
+            return new ScreenBrightness { Enabled = false };
+
+        // Outdoor brightness from Open-Meteo's 15 minute shortwave radiation, which covers both the
+        // sun's position and the cloud cover. Values in between are interpolated for smooth changes.
+        var series = await _brightnessCache.GetOrAddAsync("irradiance", async () =>
+        {
+            var points = new List<(DateTimeOffset Time, double Irradiance)>();
+            var weatherLatLong = _settings.WeatherLatLong;
+            if (string.IsNullOrWhiteSpace(weatherLatLong))
+                return points;
+
+            var parts = weatherLatLong.Split(',');
+            var lat = double.Parse(parts[0].Trim(), CultureInfo.InvariantCulture);
+            var lon = double.Parse(parts[1].Trim(), CultureInfo.InvariantCulture);
+            var url = string.Create(CultureInfo.InvariantCulture,
+                $"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&minutely_15=shortwave_radiation&past_minutely_15=4&forecast_minutely_15=8&timezone=UTC&timeformat=unixtime");
+
+            try
+            {
+                using var stream = await ForecastHttpClient.GetStreamAsync(url);
+                using var doc = await JsonDocument.ParseAsync(stream);
+                var minutely = doc.RootElement.GetProperty("minutely_15");
+                var times = minutely.GetProperty("time");
+                var values = minutely.GetProperty("shortwave_radiation");
+                for (var i = 0; i < times.GetArrayLength(); i++)
+                {
+                    if (values[i].ValueKind == JsonValueKind.Number)
+                        points.Add((DateTimeOffset.FromUnixTimeSeconds(times[i].GetInt64()), values[i].GetDouble()));
+                }
+            }
+            catch
+            {
+                //do nothing and return what we have
+            }
+
+            return points;
+        });
+
+        var min = Math.Clamp(_settings.AutoBrightnessMin, 1, 100) / 100d;
+        var max = Math.Clamp(_settings.AutoBrightnessMax, 1, 100) / 100d;
+        if (max < min) (min, max) = (max, min);
+
+        var irradiance = InterpolateIrradiance(series, DateTimeOffset.UtcNow);
+        if (irradiance == null)
+            return new ScreenBrightness { Enabled = true, Brightness = max };
+
+        // Square root, because perceived brightness is not linear: dusk should already lift the screen noticeably.
+        var level = Math.Sqrt(Math.Clamp(irradiance.Value / FullBrightnessIrradiance, 0d, 1d));
+        return new ScreenBrightness
+        {
+            Enabled = true,
+            Brightness = Math.Round(min + (max - min) * level, 3),
+            Irradiance = Math.Round(irradiance.Value, 1)
+        };
+    }
+
+    private static double? InterpolateIrradiance(List<(DateTimeOffset Time, double Irradiance)> series, DateTimeOffset now)
+    {
+        if (series.Count == 0)
+            return null;
+
+        for (var i = 1; i < series.Count; i++)
+        {
+            var (t0, v0) = series[i - 1];
+            var (t1, v1) = series[i];
+            if (now >= t0 && now <= t1)
+            {
+                var fraction = (now - t0).TotalSeconds / (t1 - t0).TotalSeconds;
+                return v0 + (v1 - v0) * fraction;
+            }
+        }
+
+        return now < series[0].Time ? series[0].Irradiance : series[^1].Irradiance;
+    }
 }
