@@ -37,6 +37,18 @@
 				if (!splash || splash.getAttribute('data-hiding')) return;
 				splash.setAttribute('data-hiding', '1');
 				setTimeout(function () {
+					// Inside the Android app a native copy of this logo covers the page until now;
+					// tell the app to remove it, then start the zoom right after.
+					var app = window.ImmichFrameApp;
+					if (app && app.splashDone) {
+						try {
+							app.splashDone();
+						} catch (e) {}
+					}
+					setTimeout(startZoom, app ? 120 : 0);
+				}, Math.max(0, MIN_VISIBLE_MS - (Date.now() - shownAt)));
+			};
+			function startZoom() {
 					// Zoom through the aperture in the middle of the logo into the first photo.
 					// Only transform/opacity/background change, so older devices can composite it smoothly.
 					var logo = document.getElementById('splash-logo');
@@ -49,8 +61,7 @@
 					setTimeout(function () {
 						if (splash.parentNode) splash.parentNode.removeChild(splash);
 					}, 1200);
-				}, Math.max(0, MIN_VISIBLE_MS - (Date.now() - shownAt)));
-			};
+			}
 			// Never keep the splash forever, e.g. if the page fails to start. Slow Wi-Fi can take a while,
 			// and staying on the logo looks better than a half-loaded page.
 			setTimeout(window.hideSplash, 90000);
