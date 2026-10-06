@@ -56,8 +56,13 @@
 	const today = $derived(details?.days?.[0]);
 	const nextDays = $derived((details?.days ?? []).slice(1, 4));
 
-	const columnWidth = $derived(hours.length ? WIDTH / hours.length : WIDTH);
-	const xAt = (i: number) => (i + 0.5) * columnWidth;
+	// Surface-colored outline behind labels, so the dashed "now" line does not cut through text.
+	const HALO = { stroke: SURFACE, 'stroke-width': 6, 'stroke-linejoin': 'round', 'paint-order': 'stroke' } as const;
+
+	// Side padding so the 00:00 and 24:00 labels are not cut off at the edges.
+	const PAD_X = 28;
+	const columnWidth = $derived(hours.length ? (WIDTH - 2 * PAD_X) / hours.length : WIDTH);
+	const xAt = (i: number) => PAD_X + (i + 0.5) * columnWidth;
 
 	const tempRange = $derived.by(() => {
 		if (!hours.length) return { min: 0, max: 1 };
@@ -96,7 +101,7 @@
 		const start = new Date(hours[0].time).getTime();
 		const hoursSinceStart = (Date.now() - start) / 3600000;
 		if (hoursSinceStart < 0 || hoursSinceStart > hours.length - 1) return null;
-		return (hoursSinceStart + 0.5) * columnWidth;
+		return PAD_X + (hoursSinceStart + 0.5) * columnWidth;
 	});
 
 	const time = (iso?: string | null) => (iso ? format(new Date(iso), 'HH:mm') : '–');
@@ -165,13 +170,13 @@
 		<!-- Today 00:00-24:00: temperature line and rain probability bars as two stacked panels on one time axis -->
 		{#if hours.length}
 			<svg viewBox="0 0 {WIDTH} {HEIGHT}" style="width: 100%; height: auto; margin-top: 2vh; display: block">
-				<text x="0" y="18" fill={TEXT_MUTED} font-size="20">
+				<text x="0" y="18" fill={TEXT_MUTED} font-size="20" {...HALO}>
 					{isGerman ? 'Temperatur heute' : 'Temperature today'}
 				</text>
 				<line x1="0" x2={WIDTH} y1={TEMP_BOTTOM + 10} y2={TEMP_BOTTOM + 10} stroke={GRID} stroke-width="1" />
 				{#if nowX !== null}
 					<line x1={nowX} x2={nowX} y1={TEMP_TOP - 10} y2={RAIN_BOTTOM} stroke={NOW_COLOR} stroke-width="2" stroke-dasharray="4 6" />
-					<text x={nowX + 8} y={RAIN_TOP + 14} fill={TEXT_MUTED} font-size="16">
+					<text x={nowX + 8} y={RAIN_TOP + 14} fill={TEXT_MUTED} font-size="16" {...HALO}>
 						{isGerman ? 'Jetzt' : 'Now'}
 					</text>
 				{/if}
@@ -185,7 +190,7 @@
 					{/if}
 				{/each}
 
-				<text x="0" y={RAIN_TOP - 12} fill={TEXT_MUTED} font-size="20">
+				<text x="0" y={RAIN_TOP - 12} fill={TEXT_MUTED} font-size="20" {...HALO}>
 					{isGerman ? 'Regenwahrscheinlichkeit' : 'Chance of rain'}
 				</text>
 				<line x1="0" x2={WIDTH} y1={RAIN_BOTTOM} y2={RAIN_BOTTOM} stroke={GRID} stroke-width="1" />
@@ -195,7 +200,7 @@
 					</text>
 				{/if}
 				{#each hours as hour, i (hour.time)}
-					<path d={barPath(i * columnWidth + 1, columnWidth - 2, rainHeight(hour.precipitationProbability))} fill={RAIN_COLOR} />
+					<path d={barPath(PAD_X + i * columnWidth + 1, columnWidth - 2, rainHeight(hour.precipitationProbability))} fill={RAIN_COLOR} />
 					{#if i % LABEL_EVERY === 0 && (hour.precipitationProbability ?? 0) >= 10}
 						<text
 							x={xAt(i)}
