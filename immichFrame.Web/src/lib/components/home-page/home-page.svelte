@@ -118,6 +118,9 @@
 				assetPromisesDict[asset.id] = loadAsset(asset);
 			}
 		}
+		// Let the photos on screen use the full bandwidth first; on slow Wi-Fi parallel preloads
+		// would otherwise delay the first photo considerably.
+		await Promise.allSettled(displayingAssets.map((asset) => assetPromisesDict[asset.id]));
 		for (let i = 0; i < PRELOAD_ASSETS; i++) {
 			if (i >= assetBacklog.length) {
 				break;

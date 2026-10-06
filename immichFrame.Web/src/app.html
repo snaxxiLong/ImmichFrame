@@ -51,8 +51,9 @@
 					}, 1200);
 				}, Math.max(0, MIN_VISIBLE_MS - (Date.now() - shownAt)));
 			};
-			// Never keep the splash forever, e.g. if the first photo fails to load.
-			setTimeout(window.hideSplash, 30000);
+			// Never keep the splash forever, e.g. if the page fails to start. Slow Wi-Fi can take a while,
+			// and staying on the logo looks better than a half-loaded page.
+			setTimeout(window.hideSplash, 90000);
 		})();
 	</script>
 	<div style="display: contents">%sveltekit.body%</div>
