@@ -505,16 +505,29 @@
 	// Daylight-based screen brightness: the server derives it from the outdoor solar radiation and
 	// the Android app applies it through its JS bridge. Other clients have no bridge and skip this.
 	const BRIGHTNESS_INTERVAL_MS = 5 * 60 * 1000;
+	const BRIGHTNESS_QUICK_FADE_MS = 2000;
+	// Bigger jumps than daylight causes within one interval, e.g. after changing min/max in the admin UI.
+	const BRIGHTNESS_JUMP = 0.2;
 	let brightnessInterval: number | undefined;
+	let lastBrightness: number | null = null;
 
 	async function updateScreenBrightness() {
-		const app = (window as unknown as { ImmichFrameApp?: { setBrightness?: (value: number) => void } })
-			.ImmichFrameApp;
+		const app = (
+			window as unknown as {
+				ImmichFrameApp?: { setBrightness?: (value: number, durationMs?: number) => void };
+			}
+		).ImmichFrameApp;
 		if (!app?.setBrightness) return;
 		try {
 			const result = await api.getScreenBrightness($clientIdentifierStore);
 			// -1 hands control back to the system brightness when the feature is switched off.
-			app.setBrightness(result.enabled ? result.brightness : -1);
+			const target = result.enabled ? result.brightness : -1;
+			// Spread regular daylight changes over the whole interval so the brightness drifts continuously;
+			// the first value after (re)start and big jumps are applied quickly.
+			const quick =
+				lastBrightness === null || target < 0 || Math.abs(target - lastBrightness) > BRIGHTNESS_JUMP;
+			app.setBrightness(target, quick ? BRIGHTNESS_QUICK_FADE_MS : BRIGHTNESS_INTERVAL_MS);
+			lastBrightness = target;
 		} catch (err) {
 			console.error('Error fetching screen brightness:', err);
 		}
