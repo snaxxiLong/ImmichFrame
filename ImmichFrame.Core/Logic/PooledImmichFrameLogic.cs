@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using ImmichFrame.Core.Api;
 using ImmichFrame.Core.Exceptions;
 using ImmichFrame.Core.Helpers;
@@ -13,6 +14,8 @@ public class PooledImmichFrameLogic : IAccountImmichFrameLogic, IDisposable
     private readonly IApiCache _apiCache;
     private readonly IAssetPool _pool;
     private readonly ImmichApi _immichApi;
+    // Assets deleted from the frame stay in the cached pools until the next refresh, so filter them out here.
+    private readonly ConcurrentDictionary<Guid, byte> _deletedAssets = new();
     private readonly string _downloadLocation = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ImageCache");
 
     public PooledImmichFrameLogic(IAccountSettings accountSettings, IGeneralSettings generalSettings, IHttpClientFactory httpClientFactory)
@@ -67,12 +70,22 @@ public class PooledImmichFrameLogic : IAccountImmichFrameLogic, IDisposable
 
     public async Task<AssetResponseDto?> GetNextAsset()
     {
-        return (await _pool.GetAssets(1)).FirstOrDefault();
+        return (await _pool.GetAssets(1)).FirstOrDefault(IsNotDeleted);
     }
 
     public async Task<IEnumerable<AssetResponseDto>> GetAssets()
     {
-        return await _pool.GetAssets(25);
+        return (await _pool.GetAssets(25)).Where(IsNotDeleted).ToList();
+    }
+
+    private bool IsNotDeleted(AssetResponseDto asset)
+        => !Guid.TryParse(asset.Id.ToString(), out var id) || !_deletedAssets.ContainsKey(id);
+
+    public async Task DeleteAsset(Guid assetId)
+    {
+        // Moves the asset to the Immich trash (no permanent delete), so it can still be restored there.
+        await _immichApi.DeleteAssetsAsync(new AssetBulkDeleteDto { Ids = new List<Guid> { assetId }, Force = false });
+        _deletedAssets[assetId] = 0;
     }
 
     public async Task<AssetResponseDto> GetAssetInfoById(Guid assetId) => await _immichApi.GetAssetInfoAsync(assetId, null, null);

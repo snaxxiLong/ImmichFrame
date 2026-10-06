@@ -25,5 +25,13 @@ namespace ImmichFrame.WebApi.Controllers
             _logger.LogDebug("Weather requested by '{sanitizedClientIdentifier}'", sanitizedClientIdentifier);
             return await _weatherService.GetWeather();
         }
+
+        [HttpGet("Forecast", Name = "GetWeatherForecast")]
+        public async Task<IList<ImmichFrame.Core.Models.WeatherForecastEntry>> GetWeatherForecast(int count = 3, string clientIdentifier = "")
+        {
+            var sanitizedClientIdentifier = clientIdentifier.SanitizeString();
+            _logger.LogDebug("Weather forecast requested by '{sanitizedClientIdentifier}'", sanitizedClientIdentifier);
+            return await _weatherService.GetForecast(Math.Clamp(count, 1, 8));
+        }
     }
 }

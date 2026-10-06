@@ -1,4 +1,4 @@
-﻿using ImmichFrame.Core.Api;
+using ImmichFrame.Core.Api;
 using ImmichFrame.Core.Models;
 
 
@@ -14,6 +14,7 @@ namespace ImmichFrame.Core.Interfaces
         public Task<AssetResponse> GetAsset(Guid id, AssetTypeEnum? assetType = null, string? rangeHeader = null);
         public Task<long> GetTotalAssets();
         public Task SendWebhookNotification(IWebhookNotification notification);
+        public Task DeleteAsset(Guid assetId);
     }
 
     public interface IAccountImmichFrameLogic : IImmichFrameLogic

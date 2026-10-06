@@ -75,6 +75,13 @@
 
 	let cursorVisible = $state(true);
 
+	const DELETE_DIALOG_TIMEOUT_MS = 60000;
+	let deleteCandidates: { asset: api.AssetResponseDto; url: string }[] | null = $state(null);
+	let deleteBusy = $state(false);
+	let deleteError = $state('');
+	let deleteDialogTimeout: number | undefined;
+	const isGerman = $derived(($configStore.language ?? '').toLowerCase().startsWith('de'));
+
 	const authsecret = page.url.searchParams.get('authsecret');
 
 	if (authsecret && authsecret != $authSecretStore) {
@@ -421,6 +428,50 @@
 		}
 	}
 
+	async function openDeleteDialog() {
+		infoVisible = false;
+		userPaused = true;
+		await assetComponent?.pause?.();
+		await progressBar.pause();
+		deleteError = '';
+		deleteCandidates = displayingAssets.map((asset, i) => ({
+			asset,
+			url: assetsState.assets[i]?.[0] ?? ''
+		}));
+		clearTimeout(deleteDialogTimeout);
+		deleteDialogTimeout = window.setTimeout(closeDeleteDialog, DELETE_DIALOG_TIMEOUT_MS);
+	}
+
+	async function closeDeleteDialog() {
+		clearTimeout(deleteDialogTimeout);
+		deleteCandidates = null;
+		deleteBusy = false;
+		userPaused = false;
+		await assetComponent?.play?.();
+		await progressBar.play();
+	}
+
+	async function confirmDelete(asset: api.AssetResponseDto) {
+		deleteBusy = true;
+		deleteError = '';
+		try {
+			await api.deleteAsset(asset.id, $clientIdentifierStore);
+		} catch (err) {
+			console.error('Failed to delete asset:', err);
+			deleteError = isGerman ? 'Löschen fehlgeschlagen.' : 'Delete failed.';
+			deleteBusy = false;
+			return;
+		}
+		clearTimeout(deleteDialogTimeout);
+		deleteCandidates = null;
+		deleteBusy = false;
+		// Drop the deleted asset everywhere so it is neither shown again nor kept in the history.
+		displayingAssets = displayingAssets.filter((a) => a.id !== asset.id);
+		assetBacklog = assetBacklog.filter((a) => a.id !== asset.id);
+		assetHistory = assetHistory.filter((a) => a.id !== asset.id);
+		await handleDone(false, true);
+	}
+
 	// The configured theme applies to the slideshow only — the admin UI keeps
 	// the @immich/ui defaults.
 	$effect(() => applyFrameColors($configStore));
@@ -584,6 +635,7 @@
 					await progressBar.pause();
 				}
 			}}
+			remove={openDeleteDialog}
 			bind:status={progressBarStatus}
 			bind:infoVisible
 			overlayVisible={cursorVisible}
@@ -598,6 +650,47 @@
 			bind:status={progressBarStatus}
 			onDone={handleDone}
 		/>
+
+		{#if deleteCandidates}
+			<div class="fixed inset-0 z-[200] grid place-items-center bg-black/70">
+				<div class="rounded-2xl bg-neutral-900 p-6 text-center text-white shadow-2xl max-w-[90vw]">
+					<p class="mb-4 text-2xl font-semibold">
+						{isGerman ? 'Foto in den Papierkorb verschieben?' : 'Move photo to trash?'}
+					</p>
+					<div class="flex justify-center gap-6">
+						{#each deleteCandidates as candidate (candidate.asset.id)}
+							<div class="flex flex-col items-center gap-3">
+								{#if candidate.url}
+									<img src={candidate.url} alt="" class="max-h-[40vh] max-w-[38vw] rounded-lg object-contain" />
+								{/if}
+								<button
+									class="rounded-xl bg-red-600 px-6 py-3 text-xl font-semibold disabled:opacity-50"
+									disabled={deleteBusy}
+									onclick={() => confirmDelete(candidate.asset)}
+								>
+									{isGerman ? 'Löschen' : 'Delete'}
+								</button>
+							</div>
+						{/each}
+					</div>
+					{#if deleteError}
+						<p class="mt-4 text-red-400">{deleteError}</p>
+					{/if}
+					<button
+						class="mt-6 rounded-xl bg-neutral-700 px-6 py-3 text-xl"
+						disabled={deleteBusy}
+						onclick={closeDeleteDialog}
+					>
+						{isGerman ? 'Abbrechen' : 'Cancel'}
+					</button>
+					<p class="mt-3 text-sm text-neutral-400">
+						{isGerman
+							? 'Gelöschte Fotos bleiben 30 Tage im Immich-Papierkorb.'
+							: 'Deleted photos stay in the Immich trash for 30 days.'}
+					</p>
+				</div>
+			</div>
+		{/if}
 	{:else}
 		<LoadingElement />
 	{/if}

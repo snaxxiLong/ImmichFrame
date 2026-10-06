@@ -41,6 +41,33 @@ export const sendAuthSecretToServiceWorker = () => {
 	}
 };
 
+export interface WeatherForecastEntry {
+	time: string;
+	temperature: number;
+	description: string;
+	iconId: string;
+}
+
+const authHeaders = () => ({ Authorization: 'Bearer ' + get(authSecretStore) });
+
+export const getWeatherForecast = async (count: number, clientIdentifier?: string) => {
+	const params = new URLSearchParams({ count: String(count) });
+	if (clientIdentifier) params.set('clientIdentifier', clientIdentifier);
+	const res = await fetch(`/api/Weather/Forecast?${params}`, { headers: authHeaders() });
+	if (!res.ok) throw new Error(`Forecast request failed: ${res.status}`);
+	return (await res.json()) as WeatherForecastEntry[];
+};
+
+export const deleteAsset = async (id: string, clientIdentifier?: string) => {
+	const params = new URLSearchParams();
+	if (clientIdentifier) params.set('clientIdentifier', clientIdentifier);
+	const res = await fetch(`/api/Asset/${encodeURIComponent(id)}?${params}`, {
+		method: 'DELETE',
+		headers: authHeaders()
+	});
+	if (!res.ok) throw new Error(`Delete request failed: ${res.status}`);
+};
+
 export const getBaseUrl = () => defaults.baseUrl;
 
 export const setBaseUrl = (baseUrl: string) => {

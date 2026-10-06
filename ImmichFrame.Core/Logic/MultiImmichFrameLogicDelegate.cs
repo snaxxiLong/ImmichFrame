@@ -48,6 +48,9 @@ public class MultiImmichFrameLogicDelegate : IImmichFrameLogic, IDisposable
     public Task<AssetResponse> GetAsset(Guid assetId, AssetTypeEnum? assetType = null, string? rangeHeader = null)
         => _accountSelectionStrategy.ForAsset(assetId, logic => logic.GetAsset(assetId, assetType, rangeHeader));
 
+    public Task DeleteAsset(Guid assetId)
+        => _accountSelectionStrategy.ForAsset(assetId, logic => logic.DeleteAsset(assetId));
+
     public async Task<long> GetTotalAssets()
     {
         var allInts = await Task.WhenAll(_accountToDelegate.Values.Select(account => account.GetTotalAssets()));

@@ -42,6 +42,16 @@ namespace ImmichFrame.WebApi.Controllers
             return (await _logic.GetAssets()).ToList();
         }
 
+        [HttpDelete("{id}", Name = "DeleteAsset")]
+        public async Task<IActionResult> DeleteAsset(Guid id, string clientIdentifier = "")
+        {
+            var sanitizedClientIdentifier = clientIdentifier.SanitizeString();
+            _logger.LogInformation("Asset '{id}' moved to trash by '{sanitizedClientIdentifier}'", id, sanitizedClientIdentifier);
+
+            await _logic.DeleteAsset(id);
+            return NoContent();
+        }
+
         [HttpGet("{id}/AssetInfo", Name = "GetAssetInfo")]
         public async Task<AssetResponseDto> GetAssetInfo(Guid id, string clientIdentifier = "")
         {

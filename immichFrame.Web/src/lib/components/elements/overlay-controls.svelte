@@ -4,7 +4,8 @@
 		mdiPlay,
 		mdiPause,
 		mdiChevronLeft,
-		mdiInformationOutline
+		mdiInformationOutline,
+		mdiTrashCanOutline
 	} from '@mdi/js';
 	import Icon from './icon.svelte';
 	import { ProgressBarStatus } from './progress-bar.types';
@@ -17,6 +18,7 @@
 		back: () => void;
 		pause: () => void;
 		showInfo: () => void;
+		remove?: () => void;
 	}
 
 	let {
@@ -26,7 +28,8 @@
 		next,
 		back,
 		pause,
-		showInfo
+		showInfo,
+		remove
 	}: Props = $props();
 
 	function shortcuts(node: any, shortcutList: any[]) {
@@ -106,8 +109,17 @@
 				</button>
 			</div>
 
-			<div class="group grid place-items-center">
-				<!-- <button class="opacity-0 hover:opacity-100 text-frame-primary"> </button> -->
+			<div id="overlaydelete" class="group grid place-items-center">
+				{#if remove}
+					<button class="opacity-0 group-hover:opacity-100 text-frame-primary" onclick={remove}
+						><Icon
+							title="Delete"
+							class="max-h-[min(6rem,20vh)] max-w-[min(6rem,20vh)] h-[20vh] w-[20vw]"
+							path={mdiTrashCanOutline}
+							size=""
+						/></button
+					>
+				{/if}
 			</div>
 		</div>
 

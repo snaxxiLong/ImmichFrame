@@ -9,6 +9,9 @@
 	api.init();
 
 	let weather = $state<api.IWeather | null>(null);
+	let forecast = $state<api.WeatherForecastEntry[]>([]);
+
+	const FORECAST_COUNT = 3;
 
 	const localeToUse = $derived(
 		() => locale[$configStore.language as keyof typeof locale] ?? locale.enUS
@@ -55,7 +58,16 @@
 		} catch (err) {
 			console.error('Error fetching weather:', err);
 		}
+
+		try {
+			forecast = await api.getWeatherForecast(FORECAST_COUNT, $clientIdentifierStore);
+		} catch (err) {
+			console.error('Error fetching weather forecast:', err);
+		}
 	}
+
+	const iconUrl = (iconId: string) =>
+		$configStore.weatherIconUrl?.replace('{IconId}', encodeURIComponent(iconId.split(',')[0].trim()));
 </script>
 
 <div
@@ -90,13 +102,27 @@
             {/if}
             
             <div class="weather-location">{weather.location},</div>
-            <div class="weather-temperature">{weather.temperature?.toFixed(1)}°</div>
+            <div class="weather-temperature">{Math.round(weather.temperature ?? 0)}°</div>
         </div>
         
         {#if $configStore.showWeatherDescription}
             <p id="clockweatherdesc" class="text-sm sm:text-sm md:text-md lg:text-xl text-shadow-sm">
                 {weather.description}
             </p>
+        {/if}
+
+        {#if forecast.length}
+            <div id="clockforecast" class="mt-2 flex justify-center gap-4 text-sm sm:text-sm md:text-md lg:text-xl text-shadow-sm">
+                {#each forecast as entry (entry.time)}
+                    <div class="flex flex-col items-center leading-tight">
+                        <span class="font-thin">{format(new Date(entry.time), 'HH:mm')}</span>
+                        {#if $configStore.weatherIconUrl && entry.iconId}
+                            <img src={iconUrl(entry.iconId)} class="icon-forecast h-8 w-8" alt={entry.description} />
+                        {/if}
+                        <span class="font-semibold">{Math.round(entry.temperature)}°</span>
+                    </div>
+                {/each}
+            </div>
         {/if}
     </div>
 {/if}
