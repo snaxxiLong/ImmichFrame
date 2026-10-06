@@ -46,9 +46,9 @@ namespace ImmichFrame.WebApi.Controllers
         public async Task<IActionResult> DeleteAsset(Guid id, string clientIdentifier = "")
         {
             var sanitizedClientIdentifier = clientIdentifier.SanitizeString();
-            _logger.LogInformation("Asset '{id}' moved to trash by '{sanitizedClientIdentifier}'", id, sanitizedClientIdentifier);
-
             await _logic.DeleteAsset(id);
+
+            _logger.LogInformation("Asset '{id}' moved to trash by '{sanitizedClientIdentifier}'", id, sanitizedClientIdentifier);
             return NoContent();
         }
 

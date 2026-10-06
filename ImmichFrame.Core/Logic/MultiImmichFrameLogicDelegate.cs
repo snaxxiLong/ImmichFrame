@@ -1,5 +1,6 @@
 using System.Collections.Frozen;
 using ImmichFrame.Core.Api;
+using ImmichFrame.Core.Exceptions;
 using ImmichFrame.Core.Helpers;
 using ImmichFrame.Core.Interfaces;
 using ImmichFrame.Core.Models;
@@ -48,8 +49,36 @@ public class MultiImmichFrameLogicDelegate : IImmichFrameLogic, IDisposable
     public Task<AssetResponse> GetAsset(Guid assetId, AssetTypeEnum? assetType = null, string? rangeHeader = null)
         => _accountSelectionStrategy.ForAsset(assetId, logic => logic.GetAsset(assetId, assetType, rangeHeader));
 
-    public Task DeleteAsset(Guid assetId)
-        => _accountSelectionStrategy.ForAsset(assetId, logic => logic.DeleteAsset(assetId));
+    public async Task DeleteAsset(Guid assetId)
+    {
+        try
+        {
+            await _accountSelectionStrategy.ForAsset(assetId, logic => logic.DeleteAsset(assetId));
+            return;
+        }
+        catch (AssetNotFoundException)
+        {
+            // The account tracker only knows assets served since the last restart, but a frame can still
+            // show an asset it fetched before. Fall back to the account that can see the asset.
+        }
+
+        foreach (var logic in _accountToDelegate.Values)
+        {
+            try
+            {
+                await logic.GetAssetInfoById(assetId);
+            }
+            catch (ApiException)
+            {
+                continue;
+            }
+
+            await logic.DeleteAsset(assetId);
+            return;
+        }
+
+        throw new AssetNotFoundException($"No account found for asset {assetId}");
+    }
 
     public async Task<long> GetTotalAssets()
     {
