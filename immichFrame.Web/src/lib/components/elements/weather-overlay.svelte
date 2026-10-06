@@ -160,6 +160,11 @@
 					{isGerman ? 'Regenwahrscheinlichkeit' : 'Chance of rain'}
 				</text>
 				<line x1="0" x2={WIDTH} y1={RAIN_BOTTOM} y2={RAIN_BOTTOM} stroke={GRID} stroke-width="1" />
+				{#if !hours.some((h) => (h.precipitationProbability ?? 0) > 0)}
+					<text x={WIDTH / 2} y={RAIN_BOTTOM - 22} text-anchor="middle" fill={TEXT_MUTED} font-size="20">
+						{isGerman ? 'Kein Regen erwartet' : 'No rain expected'}
+					</text>
+				{/if}
 				{#each hours as hour, i (hour.time)}
 					<path d={barPath(i * columnWidth + 1, columnWidth - 2, rainHeight(hour.precipitationProbability))} fill={RAIN_COLOR} />
 					{#if i % LABEL_EVERY === 0 && (hour.precipitationProbability ?? 0) >= 10}
