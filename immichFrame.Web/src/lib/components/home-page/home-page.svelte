@@ -490,6 +490,15 @@
 		await handleDone(false, true);
 	}
 
+	// Fade out the static splash from app.html once the first photo (or an error) is on screen.
+	const SPLASH_SETTLE_MS = 400;
+	let splashHidden = false;
+	$effect(() => {
+		if (splashHidden || !(assetsState.loaded || error)) return;
+		splashHidden = true;
+		window.setTimeout(() => (window as unknown as { hideSplash?: () => void }).hideSplash?.(), SPLASH_SETTLE_MS);
+	});
+
 	// The configured theme applies to the slideshow only — the admin UI keeps
 	// the @immich/ui defaults.
 	$effect(() => applyFrameColors($configStore));
