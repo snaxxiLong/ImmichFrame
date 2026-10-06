@@ -8,16 +8,19 @@
 
 	interface Props {
 		weather: api.IWeather;
+		/** Details preloaded by the clock; fetched here only if they are not available yet. */
+		preloaded?: api.WeatherDetails | null;
 		onClose: () => void;
 	}
 
-	let { weather, onClose }: Props = $props();
+	let { weather, preloaded = null, onClose }: Props = $props();
 
 	// Plain hex colors: older Android WebViews ignore Tailwind's oklch() palette.
 	const SURFACE = '#171717';
 	const TEXT = '#f5f5f5';
 	const TEXT_MUTED = '#a3a3a3';
 	const GRID = '#333333';
+	const NOW_COLOR = '#6b6b6b';
 	const TEMP_COLOR = '#c2821a';
 	const RAIN_COLOR = '#3a85d0';
 
@@ -39,7 +42,8 @@
 	const HEIGHT = 345;
 	const LABEL_EVERY = 2;
 
-	let details = $state<api.WeatherDetails | null>(null);
+	let fetched = $state<api.WeatherDetails | null>(null);
+	const details = $derived(preloaded ?? fetched);
 	let failed = $state(false);
 
 	const isGerman = $derived(($configStore.language ?? '').toLowerCase().startsWith('de'));
@@ -82,6 +86,19 @@
 		return `M${x},${RAIN_BOTTOM} V${top + r} Q${x},${top} ${x + r},${top} H${x + w - r} Q${x + w},${top} ${x + w},${top + r} V${RAIN_BOTTOM} Z`;
 	};
 
+	// The series runs from today 00:00 to 24:00; the last point is tomorrow's midnight.
+	const hourLabel = (iso: string, i: number) =>
+		i === hours.length - 1 && i > 0 ? '24:00' : format(new Date(iso), 'HH:mm');
+
+	// Current time as a position on the hour axis (column centers are the full hours).
+	const nowX = $derived.by(() => {
+		if (!hours.length) return null;
+		const start = new Date(hours[0].time).getTime();
+		const hoursSinceStart = (Date.now() - start) / 3600000;
+		if (hoursSinceStart < 0 || hoursSinceStart > hours.length - 1) return null;
+		return (hoursSinceStart + 0.5) * columnWidth;
+	});
+
 	const time = (iso?: string | null) => (iso ? format(new Date(iso), 'HH:mm') : '–');
 	const dayName = (iso: string, index: number) =>
 		index === 0
@@ -91,13 +108,15 @@
 			: format(new Date(iso), 'EEEE', { locale: dateLocale });
 
 	onMount(() => {
-		api
-			.getWeatherDetails($clientIdentifierStore)
-			.then((d) => (details = d))
-			.catch((err) => {
-				console.error('Error fetching weather details:', err);
-				failed = true;
-			});
+		if (!preloaded) {
+			api
+				.getWeatherDetails($clientIdentifierStore)
+				.then((d) => (fetched = d))
+				.catch((err) => {
+					console.error('Error fetching weather details:', err);
+					failed = true;
+				});
+		}
 		const timeout = setTimeout(onClose, AUTO_CLOSE_MS);
 		return () => clearTimeout(timeout);
 	});
@@ -143,13 +162,19 @@
 			{/if}
 		</div>
 
-		<!-- Next 24 hours: temperature line and rain probability bars as two stacked panels on one time axis -->
+		<!-- Today 00:00-24:00: temperature line and rain probability bars as two stacked panels on one time axis -->
 		{#if hours.length}
 			<svg viewBox="0 0 {WIDTH} {HEIGHT}" style="width: 100%; height: auto; margin-top: 2vh; display: block">
 				<text x="0" y="18" fill={TEXT_MUTED} font-size="20">
-					{isGerman ? 'Temperatur, nächste 24 Stunden' : 'Temperature, next 24 hours'}
+					{isGerman ? 'Temperatur heute' : 'Temperature today'}
 				</text>
 				<line x1="0" x2={WIDTH} y1={TEMP_BOTTOM + 10} y2={TEMP_BOTTOM + 10} stroke={GRID} stroke-width="1" />
+				{#if nowX !== null}
+					<line x1={nowX} x2={nowX} y1={TEMP_TOP - 10} y2={RAIN_BOTTOM} stroke={NOW_COLOR} stroke-width="2" stroke-dasharray="4 6" />
+					<text x={nowX + 8} y={RAIN_TOP + 14} fill={TEXT_MUTED} font-size="16">
+						{isGerman ? 'Jetzt' : 'Now'}
+					</text>
+				{/if}
 				<path d={tempPath} fill="none" stroke={TEMP_COLOR} stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
 				{#each hours as hour, i (hour.time)}
 					{#if i % LABEL_EVERY === 0}
@@ -187,7 +212,7 @@
 				{#each hours as hour, i (hour.time)}
 					{#if i % LABEL_EVERY === 0}
 						<text x={xAt(i)} y={TIME_Y} text-anchor="middle" fill={TEXT_MUTED} font-size="20">
-							{format(new Date(hour.time), 'HH:mm')}
+							{hourLabel(hour.time, i)}
 						</text>
 						{#if $configStore.weatherIconUrl}
 							<image

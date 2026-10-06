@@ -149,7 +149,7 @@ public class OpenWeatherMapService : IWeatherService
         _ => ""
     };
 
-    private const int DetailHours = 24;
+    private const int DetailHours = 25;
     private const int DetailDays = 4;
 
     public async Task<WeatherDetails> GetWeatherDetails()
@@ -222,12 +222,14 @@ public class OpenWeatherMapService : IWeatherService
             return result;
         });
 
-        // The cached series starts at midnight; hand out the next 24 hours from the current hour on.
-        var hourStart = DateTimeOffset.UtcNow.AddHours(-1);
+        // Today from 00:00 to 24:00 (25 hourly points), and the days from today on. Filtering by the local date
+        // keeps a series cached shortly before midnight correct after midnight.
+        var today = DateTime.Today;
+        var todayStart = new DateTimeOffset(today, TimeZoneInfo.Local.GetUtcOffset(today));
         return new WeatherDetails
         {
-            Hours = details.Hours.Where(h => h.Time > hourStart).Take(DetailHours).ToList(),
-            Days = details.Days
+            Hours = details.Hours.Where(h => h.Time >= todayStart).Take(DetailHours).ToList(),
+            Days = details.Days.Where(d => d.Date >= todayStart).ToList()
         };
     }
 

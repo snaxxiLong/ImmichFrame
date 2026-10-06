@@ -11,6 +11,8 @@
 	api.init();
 
 	let weather = $state<api.IWeather | null>(null);
+	// Preloaded with the weather so the overlay opens with its data instead of a loading state.
+	let weatherDetails = $state<api.WeatherDetails | null>(null);
 	let weatherOverlayOpen = $state(false);
 
 	function openWeatherOverlay(event: MouseEvent) {
@@ -78,6 +80,12 @@
 			forecast = await api.getWeatherForecast(FORECAST_COUNT, $clientIdentifierStore);
 		} catch (err) {
 			console.error('Error fetching weather forecast:', err);
+		}
+
+		try {
+			weatherDetails = await api.getWeatherDetails($clientIdentifierStore);
+		} catch (err) {
+			console.error('Error fetching weather details:', err);
 		}
 	}
 
@@ -147,5 +155,5 @@
 </div>
 
 {#if weatherOverlayOpen && weather}
-	<WeatherOverlay {weather} onClose={closeWeatherOverlay} />
+	<WeatherOverlay {weather} preloaded={weatherDetails} onClose={closeWeatherOverlay} />
 {/if}
