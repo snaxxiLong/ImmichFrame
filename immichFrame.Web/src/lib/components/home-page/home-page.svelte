@@ -657,11 +657,11 @@
 					<p class="mb-4 text-2xl font-semibold">
 						{isGerman ? 'Foto in den Papierkorb verschieben?' : 'Move photo to trash?'}
 					</p>
-					<div class="flex justify-center gap-6">
+					<div class="flex justify-center" style="gap: 8rem">
 						{#each deleteCandidates as candidate (candidate.asset.id)}
 							<div class="flex flex-col items-center gap-3">
 								{#if candidate.url}
-									<img src={candidate.url} alt="" class="max-h-[40vh] max-w-[38vw] rounded-lg object-contain" />
+									<img src={candidate.url} alt="" class="max-h-[40vh] max-w-[32vw] rounded-lg object-contain" />
 								{/if}
 								<button
 									class="rounded-xl px-6 py-3 text-xl font-semibold disabled:opacity-50" style="background-color: #dc2626"

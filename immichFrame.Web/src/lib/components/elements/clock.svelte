@@ -88,7 +88,7 @@
 		{timePortion()}
 	</p>
 	{#if weather}
-    <div id="clockweather">
+    <div id="clockweather" style="zoom: 0.75">
         <div
             id="clockweatherinfo"
             class="text-xl sm:text-xl md:text-2xl lg:text-3xl font-semibold text-shadow-sm weather-info"
