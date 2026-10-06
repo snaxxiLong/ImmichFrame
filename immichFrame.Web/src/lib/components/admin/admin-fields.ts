@@ -106,6 +106,13 @@ export const generalSections: SectionDef[] = [
 				type: 'text',
 				placeholder: '40.7128,-74.0060'
 			},
+			{
+				key: 'weatherLocationName',
+				label: 'Weather location name',
+				type: 'text',
+				placeholder: 'New York',
+				help: 'Optional. Shown instead of the place name OpenWeatherMap picks for the coordinates.'
+			},
 			{ key: 'unitSystem', label: 'Unit system', type: 'select', options: ['imperial', 'metric'] },
 			{ key: 'showWeatherDescription', label: 'Show weather description', type: 'checkbox' },
 			{

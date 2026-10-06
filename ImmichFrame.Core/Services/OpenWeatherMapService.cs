@@ -19,7 +19,7 @@ public class OpenWeatherMapService : IWeatherService
 
     public async Task<IWeather?> GetWeather()
     {
-        return await _weatherCache.GetOrAddAsync("weather", async () =>
+        var weather = await _weatherCache.GetOrAddAsync("weather", async () =>
         {
             var weatherLatLong = _settings.WeatherLatLong;
 
@@ -30,6 +30,12 @@ public class OpenWeatherMapService : IWeatherService
 
             return weather;
         });
+
+        // OpenWeatherMap names the nearest place in its own database, which is often a district.
+        if (weather != null && !string.IsNullOrWhiteSpace(_settings.WeatherLocationName))
+            weather.Location = _settings.WeatherLocationName.Trim();
+
+        return weather;
     }
 
     public async Task<IWeather?> GetWeather(double latitude, double longitude)

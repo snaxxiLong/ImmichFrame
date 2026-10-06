@@ -51,6 +51,7 @@ public class LiveGeneralSettings(ISettingsProvider _provider) : IGeneralSettings
     public int RefreshAlbumPeopleInterval => Current.RefreshAlbumPeopleInterval;
     public string? WeatherApiKey => Current.WeatherApiKey;
     public string? WeatherLatLong => Current.WeatherLatLong;
+    public string? WeatherLocationName => Current.WeatherLocationName;
     public string? UnitSystem => Current.UnitSystem;
     public bool AutoBrightness => Current.AutoBrightness;
     public int AutoBrightnessMin => Current.AutoBrightnessMin;

@@ -121,7 +121,7 @@
 						{Math.round(weather.temperature ?? 0)}°
 					</div>
 					<div style="font-size: 3vh; color: {TEXT_MUTED}">
-						{weather.description} · {weather.location}
+						{`${weather.description} · ${weather.location}`}
 					</div>
 				</div>
 			</div>
@@ -131,10 +131,10 @@
 					<span style="font-weight: 600">{Math.round(today.temperatureMax)}° / {Math.round(today.temperatureMin)}°</span>
 					<span style="color: {TEXT_MUTED}">{isGerman ? 'Regen' : 'Rain'}</span>
 					<span style="font-weight: 600">
-						{today.precipitationProbability ?? 0}% · {today.precipitationSum.toFixed(1)} mm
+						{`${today.precipitationProbability ?? 0}% · ${today.precipitationSum.toFixed(1)} mm`}
 					</span>
 					<span style="color: {TEXT_MUTED}">{isGerman ? 'Sonne' : 'Sun'}</span>
-					<span style="font-weight: 600">↑ {time(today.sunrise)} · ↓ {time(today.sunset)}</span>
+					<span style="font-weight: 600">{`↑ ${time(today.sunrise)} · ↓ ${time(today.sunset)}`}</span>
 				</div>
 			{/if}
 		</div>
@@ -219,7 +219,7 @@
 							<div style="font-weight: 600">{dayName(day.date, i)}</div>
 							<div>
 								{Math.round(day.temperatureMax)}° / <span style="color: {TEXT_MUTED}">{Math.round(day.temperatureMin)}°</span>
-								<span style="color: {TEXT_MUTED}"> · {day.precipitationProbability ?? 0}%</span>
+								<span style="color: {TEXT_MUTED}">{` · ${day.precipitationProbability ?? 0}%`}</span>
 							</div>
 						</div>
 					</div>

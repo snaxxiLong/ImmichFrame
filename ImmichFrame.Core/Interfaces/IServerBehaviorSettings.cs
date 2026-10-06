@@ -6,6 +6,7 @@ namespace ImmichFrame.Core.Interfaces
         public int RefreshAlbumPeopleInterval { get; }
         public string? WeatherApiKey { get; }
         public string? WeatherLatLong { get; }
+        public string? WeatherLocationName { get; }
         public string? UnitSystem { get; }
         public bool AutoBrightness { get; }
         public int AutoBrightnessMin { get; }

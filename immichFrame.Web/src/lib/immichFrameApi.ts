@@ -63,6 +63,7 @@ export type GeneralSettings = {
     weatherApiKey?: string | null;
     unitSystem?: string | null;
     weatherLatLong?: string | null;
+    weatherLocationName?: string | null;
     autoBrightness?: boolean;
     autoBrightnessMin?: number;
     autoBrightnessMax?: number;
