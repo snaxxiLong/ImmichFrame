@@ -5,7 +5,6 @@
 	import * as locale from 'date-fns/locale';
 	import { configStore } from '$lib/stores/config.store';
 	import { clientIdentifierStore } from '$lib/stores/persist.store';
-	import { slideshowStore } from '$lib/stores/slideshow.store';
 	import WeatherOverlay from './weather-overlay.svelte';
 
 	api.init();
@@ -15,16 +14,15 @@
 	let weatherDetails = $state<api.WeatherDetails | null>(null);
 	let weatherOverlayOpen = $state(false);
 
+	// The overlay is see-through and the slideshow keeps running behind it; only this compact
+	// clock is hidden while the big weather view is open.
 	function openWeatherOverlay(event: MouseEvent) {
 		event.stopPropagation();
 		weatherOverlayOpen = true;
-		slideshowStore.stopProgress.set(true);
 	}
 
 	function closeWeatherOverlay() {
-		if (!weatherOverlayOpen) return;
 		weatherOverlayOpen = false;
-		slideshowStore.restartProgress.set(true);
 	}
 	let forecast = $state<api.WeatherForecastEntry[]>([]);
 
@@ -100,7 +98,7 @@
 	{$configStore.style == 'transition' ? 'bg-linear-to-r from-frame-secondary from-0% pr-10' : ''}
 	{$configStore.style == 'blur' ? 'backdrop-blur-lg rounded-tr-2xl' : ''}	
 	drop-shadow-2xl p-3"
-	style="z-index: 110; pointer-events: none"
+	style="z-index: 110; pointer-events: none; visibility: {weatherOverlayOpen ? 'hidden' : 'visible'}"
 >
 	<p id="clockdate" class="mt-2 text-sm sm:text-sm md:text-md lg:text-xl font-thin text-shadow-sm">
 		{formattedDate()}

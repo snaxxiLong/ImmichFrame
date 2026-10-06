@@ -15,12 +15,14 @@
 
 	let { weather, preloaded = null, onClose }: Props = $props();
 
-	// Plain hex colors: older Android WebViews ignore Tailwind's oklch() palette.
-	const SURFACE = '#171717';
+	// Plain colors: older Android WebViews ignore Tailwind's oklch() palette. The overlay is see-through,
+	// so the photos keep running behind a dark scrim; shadows keep text and marks readable on top.
+	const SCRIM = 'rgba(0, 0, 0, 0.55)';
+	const SHADOW = 'rgba(0, 0, 0, 0.85)';
 	const TEXT = '#f5f5f5';
-	const TEXT_MUTED = '#a3a3a3';
-	const GRID = '#333333';
-	const NOW_COLOR = '#6b6b6b';
+	const TEXT_MUTED = '#d4d4d4';
+	const GRID = 'rgba(255, 255, 255, 0.3)';
+	const NOW_COLOR = 'rgba(255, 255, 255, 0.6)';
 	const TEMP_COLOR = '#c2821a';
 	const RAIN_COLOR = '#3a85d0';
 
@@ -55,9 +57,6 @@
 	const hours = $derived(details?.hours ?? []);
 	const today = $derived(details?.days?.[0]);
 	const nextDays = $derived((details?.days ?? []).slice(1, 4));
-
-	// Surface-colored outline behind labels, so the dashed "now" line does not cut through text.
-	const HALO = { stroke: SURFACE, 'stroke-width': 6, 'stroke-linejoin': 'round', 'paint-order': 'stroke' } as const;
 
 	// Side padding so the 00:00 and 24:00 labels are not cut off at the edges.
 	const PAD_X = 28;
@@ -130,13 +129,13 @@
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 <div
 	id="weatheroverlay"
-	class="fixed inset-0 grid place-items-center"
-	style="z-index: 300; background-color: rgba(0, 0, 0, 0.8)"
+	class="fixed inset-0"
+	style="z-index: 300; background-color: {SCRIM}"
 	onclick={onClose}
 >
 	<div
-		class="rounded-2xl shadow-2xl"
-		style="width: 94vw; max-height: 94vh; padding: 2.5vh 2.5vw; background-color: {SURFACE}; color: {TEXT}"
+		class="flex flex-col justify-between"
+		style="width: 100vw; height: 100vh; padding: 4vh 4vw; box-sizing: border-box; color: {TEXT}; text-shadow: 0 1px 4px {SHADOW}"
 	>
 		<!-- Now and today -->
 		<div class="flex items-center justify-between" style="gap: 3vw">
@@ -169,28 +168,33 @@
 
 		<!-- Today 00:00-24:00: temperature line and rain probability bars as two stacked panels on one time axis -->
 		{#if hours.length}
-			<svg viewBox="0 0 {WIDTH} {HEIGHT}" style="width: 100%; height: auto; margin-top: 2vh; display: block">
-				<text x="0" y="18" fill={TEXT_MUTED} font-size="20" {...HALO}>
+			<svg
+				viewBox="0 0 {WIDTH} {HEIGHT}"
+				style="width: 100%; height: auto; display: block; filter: drop-shadow(0 1px 3px {SHADOW})"
+			>
+				<text x="0" y="18" fill={TEXT_MUTED} font-size="20">
 					{isGerman ? 'Temperatur heute' : 'Temperature today'}
 				</text>
 				<line x1="0" x2={WIDTH} y1={TEMP_BOTTOM + 10} y2={TEMP_BOTTOM + 10} stroke={GRID} stroke-width="1" />
 				{#if nowX !== null}
-					<line x1={nowX} x2={nowX} y1={TEMP_TOP - 10} y2={RAIN_BOTTOM} stroke={NOW_COLOR} stroke-width="2" stroke-dasharray="4 6" />
-					<text x={nowX + 8} y={RAIN_TOP + 14} fill={TEXT_MUTED} font-size="16" {...HALO}>
+					<!-- Two segments, leaving the rain panel title free -->
+					<line x1={nowX} x2={nowX} y1={TEMP_TOP - 10} y2={TEMP_BOTTOM + 10} stroke={NOW_COLOR} stroke-width="2" stroke-dasharray="4 6" />
+					<line x1={nowX} x2={nowX} y1={RAIN_TOP} y2={RAIN_BOTTOM} stroke={NOW_COLOR} stroke-width="2" stroke-dasharray="4 6" />
+					<text x={nowX + 8} y={RAIN_TOP + 14} fill={TEXT_MUTED} font-size="16">
 						{isGerman ? 'Jetzt' : 'Now'}
 					</text>
 				{/if}
 				<path d={tempPath} fill="none" stroke={TEMP_COLOR} stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
 				{#each hours as hour, i (hour.time)}
 					{#if i % LABEL_EVERY === 0}
-						<circle cx={xAt(i)} cy={yForTemp(hour.temperature)} r="5" fill={TEMP_COLOR} stroke={SURFACE} stroke-width="2" />
+						<circle cx={xAt(i)} cy={yForTemp(hour.temperature)} r="5" fill={TEMP_COLOR} />
 						<text x={xAt(i)} y={yForTemp(hour.temperature) - 14} text-anchor="middle" fill={TEXT} font-size="22" font-weight="600">
 							{Math.round(hour.temperature)}°
 						</text>
 					{/if}
 				{/each}
 
-				<text x="0" y={RAIN_TOP - 12} fill={TEXT_MUTED} font-size="20" {...HALO}>
+				<text x="0" y={RAIN_TOP - 12} fill={TEXT_MUTED} font-size="20">
 					{isGerman ? 'Regenwahrscheinlichkeit' : 'Chance of rain'}
 				</text>
 				<line x1="0" x2={WIDTH} y1={RAIN_BOTTOM} y2={RAIN_BOTTOM} stroke={GRID} stroke-width="1" />
@@ -243,7 +247,7 @@
 
 		<!-- Next days -->
 		{#if nextDays.length}
-			<div class="grid" style="grid-template-columns: repeat({nextDays.length}, 1fr); gap: 2vw; margin-top: 2vh; border-top: 1px solid {GRID}; padding-top: 2vh">
+			<div class="grid" style="grid-template-columns: repeat({nextDays.length}, 1fr); gap: 2vw; border-top: 1px solid {GRID}; padding-top: 2vh">
 				{#each nextDays as day, i (day.date)}
 					<div class="flex items-center" style="gap: 1vw; font-size: 3vh">
 						{#if $configStore.weatherIconUrl}
