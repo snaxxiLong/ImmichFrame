@@ -36,30 +36,36 @@ public class MultiImmichFrameLogicDelegate : IImmichFrameLogic, IDisposable
 
 
     public Task<AssetResponseDto> GetAssetInfoById(Guid assetId)
-        => _accountSelectionStrategy.ForAsset(assetId, async logic => (await logic.GetAssetInfoById(assetId)).WithAccount(logic));
+        => ForAssetWithFallback(assetId, async logic => (await logic.GetAssetInfoById(assetId)).WithAccount(logic));
 
     public Task<IEnumerable<AssetFaceResponseDto>> GetAssetFacesById(Guid assetId)
-        => _accountSelectionStrategy.ForAsset(assetId, async logic => await logic.GetAssetFacesById(assetId));
+        => ForAssetWithFallback(assetId, logic => logic.GetAssetFacesById(assetId));
 
 
     public Task<IEnumerable<AlbumResponseDto>> GetAlbumInfoById(Guid assetId)
-        => _accountSelectionStrategy.ForAsset(assetId, logic => logic.GetAlbumInfoById(assetId));
+        => ForAssetWithFallback(assetId, logic => logic.GetAlbumInfoById(assetId));
 
 
     public Task<AssetResponse> GetAsset(Guid assetId, AssetTypeEnum? assetType = null, string? rangeHeader = null)
-        => _accountSelectionStrategy.ForAsset(assetId, logic => logic.GetAsset(assetId, assetType, rangeHeader));
+        => ForAssetWithFallback(assetId, logic => logic.GetAsset(assetId, assetType, rangeHeader));
 
-    public async Task DeleteAsset(Guid assetId)
+    public Task DeleteAsset(Guid assetId)
+        => ForAssetWithFallback(assetId, async logic =>
+        {
+            await logic.DeleteAsset(assetId);
+            return true;
+        });
+
+    private async Task<T> ForAssetWithFallback<T>(Guid assetId, Func<IAccountImmichFrameLogic, Task<T>> f)
     {
         try
         {
-            await _accountSelectionStrategy.ForAsset(assetId, logic => logic.DeleteAsset(assetId));
-            return;
+            return await _accountSelectionStrategy.ForAsset(assetId, f);
         }
         catch (AssetNotFoundException)
         {
             // The account tracker only knows assets served since the last restart, but a frame can still
-            // show an asset it fetched before. Fall back to the account that can see the asset.
+            // show assets it fetched before. Fall back to the account that can see the asset.
         }
 
         foreach (var logic in _accountToDelegate.Values)
@@ -73,8 +79,7 @@ public class MultiImmichFrameLogicDelegate : IImmichFrameLogic, IDisposable
                 continue;
             }
 
-            await logic.DeleteAsset(assetId);
-            return;
+            return await f(logic);
         }
 
         throw new AssetNotFoundException($"No account found for asset {assetId}");
