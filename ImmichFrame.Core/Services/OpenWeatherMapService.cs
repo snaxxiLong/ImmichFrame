@@ -160,8 +160,8 @@ public class OpenWeatherMapService : IWeatherService
             var lat = double.Parse(parts[0].Trim(), CultureInfo.InvariantCulture);
             var lon = double.Parse(parts[1].Trim(), CultureInfo.InvariantCulture);
             var fahrenheit = string.Equals(_settings.UnitSystem, "imperial", StringComparison.OrdinalIgnoreCase);
-            const hourlyFields = "temperature_2m,weather_code,is_day,precipitation_probability,precipitation";
-            const dailyFields = "weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_sum,precipitation_probability_max";
+            const string hourlyFields = "temperature_2m,weather_code,is_day,precipitation_probability,precipitation";
+            const string dailyFields = "weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_sum,precipitation_probability_max";
             var url = string.Create(CultureInfo.InvariantCulture,
                 $"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&hourly={hourlyFields}&daily={dailyFields}&forecast_days={DetailDays}&timezone=auto&timeformat=unixtime{(fahrenheit ? "&temperature_unit=fahrenheit&precipitation_unit=inch" : "")}");
 
