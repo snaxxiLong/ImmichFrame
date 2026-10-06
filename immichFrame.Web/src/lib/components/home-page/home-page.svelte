@@ -78,6 +78,10 @@
 	const DELETE_DIALOG_TIMEOUT_MS = 60000;
 	let deleteCandidates: { asset: api.AssetResponseDto; url: string }[] | null = $state(null);
 	let deleteBusy = $state(false);
+	let deletingId: string | null = $state(null);
+	let deleteToast = $state('');
+	let deleteToastTimeout: number | undefined;
+	const DELETE_TOAST_MS = 3000;
 	let deleteError = $state('');
 	let deleteDialogTimeout: number | undefined;
 	const isGerman = $derived(($configStore.language ?? '').toLowerCase().startsWith('de'));
@@ -451,20 +455,34 @@
 		await progressBar.play();
 	}
 
+	function showDeleteToast(message: string) {
+		deleteToast = message;
+		clearTimeout(deleteToastTimeout);
+		deleteToastTimeout = window.setTimeout(() => (deleteToast = ''), DELETE_TOAST_MS);
+	}
+
 	async function confirmDelete(asset: api.AssetResponseDto) {
 		deleteBusy = true;
+		deletingId = asset.id;
 		deleteError = '';
 		try {
 			await api.deleteAsset(asset.id, $clientIdentifierStore);
 		} catch (err) {
 			console.error('Failed to delete asset:', err);
-			deleteError = isGerman ? 'Löschen fehlgeschlagen.' : 'Delete failed.';
+			deleteError = isGerman
+				? 'Löschen fehlgeschlagen. Bitte noch einmal versuchen.'
+				: 'Delete failed. Please try again.';
 			deleteBusy = false;
+			deletingId = null;
 			return;
 		}
 		clearTimeout(deleteDialogTimeout);
 		deleteCandidates = null;
 		deleteBusy = false;
+		deletingId = null;
+		showDeleteToast(
+			isGerman ? 'Foto in den Papierkorb verschoben' : 'Photo moved to trash'
+		);
 		// Drop the deleted asset everywhere so it is neither shown again nor kept in the history.
 		displayingAssets = displayingAssets.filter((a) => a.id !== asset.id);
 		assetBacklog = assetBacklog.filter((a) => a.id !== asset.id);
@@ -651,6 +669,18 @@
 			onDone={handleDone}
 		/>
 
+		{#if deleteToast}
+			<div class="fixed inset-x-0 top-8 z-[210] flex justify-center pointer-events-none">
+				<div
+					class="flex items-center gap-3 rounded-2xl px-6 py-4 text-2xl font-semibold shadow-2xl"
+					style="background-color: #166534; color: #ffffff"
+				>
+					<span aria-hidden="true">✓</span>
+					{deleteToast}
+				</div>
+			</div>
+		{/if}
+
 		{#if deleteCandidates}
 			<div class="fixed inset-0 z-[200] grid place-items-center" style="background-color: rgba(0, 0, 0, 0.75)">
 				<div class="rounded-2xl p-6 text-center shadow-2xl max-w-[90vw]" style="background-color: #171717; color: #ffffff">
@@ -661,20 +691,29 @@
 						{#each deleteCandidates as candidate (candidate.asset.id)}
 							<div class="flex flex-col items-center gap-3">
 								{#if candidate.url}
-									<img src={candidate.url} alt="" class="max-h-[40vh] max-w-[32vw] rounded-lg object-contain" />
+									<img
+										src={candidate.url}
+										alt=""
+										class="max-h-[40vh] max-w-[32vw] rounded-lg object-contain"
+										style="opacity: {deletingId && deletingId !== candidate.asset.id ? 0.3 : 1}; transition: opacity 0.2s"
+									/>
 								{/if}
 								<button
 									class="rounded-xl px-6 py-3 text-xl font-semibold disabled:opacity-50" style="background-color: #dc2626"
 									disabled={deleteBusy}
 									onclick={() => confirmDelete(candidate.asset)}
 								>
-									{isGerman ? 'Löschen' : 'Delete'}
+									{#if deletingId === candidate.asset.id}
+										{isGerman ? 'Wird gelöscht…' : 'Deleting…'}
+									{:else}
+										{isGerman ? 'Löschen' : 'Delete'}
+									{/if}
 								</button>
 							</div>
 						{/each}
 					</div>
 					{#if deleteError}
-						<p class="mt-4" style="color: #f87171">{deleteError}</p>
+						<p class="mt-4 text-xl font-semibold" style="color: #f87171">{deleteError}</p>
 					{/if}
 					<button
 						class="mt-6 rounded-xl px-6 py-3 text-xl" style="background-color: #404040"
