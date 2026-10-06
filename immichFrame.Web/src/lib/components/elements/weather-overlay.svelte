@@ -17,7 +17,7 @@
 
 	// Plain colors: older Android WebViews ignore Tailwind's oklch() palette. The overlay is see-through,
 	// so the photos keep running behind a dark scrim; shadows keep text and marks readable on top.
-	const SCRIM = 'rgba(0, 0, 0, 0.55)';
+	const SCRIM = 'rgba(0, 0, 0, 0.72)';
 	const SHADOW = 'rgba(0, 0, 0, 0.85)';
 	const TEXT = '#f5f5f5';
 	const TEXT_MUTED = '#d4d4d4';
