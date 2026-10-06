@@ -21,6 +21,9 @@
 	const TEMP_COLOR = '#c2821a';
 	const RAIN_COLOR = '#3a85d0';
 
+	// Explicit margins: the frame's font collapses the spaces around a middle dot.
+	const SEPARATOR = 'margin: 0 0.45em';
+
 	const AUTO_CLOSE_MS = 60000;
 
 	// Chart geometry in SVG units; the SVG scales uniformly with the panel width.
@@ -121,7 +124,7 @@
 						{Math.round(weather.temperature ?? 0)}°
 					</div>
 					<div style="font-size: 3vh; color: {TEXT_MUTED}">
-						{`${weather.description} · ${weather.location}`}
+						{weather.description}<span style={SEPARATOR}>·</span>{weather.location}
 					</div>
 				</div>
 			</div>
@@ -131,10 +134,10 @@
 					<span style="font-weight: 600">{Math.round(today.temperatureMax)}° / {Math.round(today.temperatureMin)}°</span>
 					<span style="color: {TEXT_MUTED}">{isGerman ? 'Regen' : 'Rain'}</span>
 					<span style="font-weight: 600">
-						{`${today.precipitationProbability ?? 0}% · ${today.precipitationSum.toFixed(1)} mm`}
+						{today.precipitationProbability ?? 0}%<span style={SEPARATOR}>·</span>{today.precipitationSum.toFixed(1)} mm
 					</span>
 					<span style="color: {TEXT_MUTED}">{isGerman ? 'Sonne' : 'Sun'}</span>
-					<span style="font-weight: 600">{`↑ ${time(today.sunrise)} · ↓ ${time(today.sunset)}`}</span>
+					<span style="font-weight: 600">↑&nbsp;{time(today.sunrise)}<span style={SEPARATOR}>·</span>↓&nbsp;{time(today.sunset)}</span>
 				</div>
 			{/if}
 		</div>
@@ -219,7 +222,7 @@
 							<div style="font-weight: 600">{dayName(day.date, i)}</div>
 							<div>
 								{Math.round(day.temperatureMax)}° / <span style="color: {TEXT_MUTED}">{Math.round(day.temperatureMin)}°</span>
-								<span style="color: {TEXT_MUTED}">{` · ${day.precipitationProbability ?? 0}%`}</span>
+								<span style="color: {TEXT_MUTED}"><span style={SEPARATOR}>·</span>{day.precipitationProbability ?? 0}%</span>
 							</div>
 						</div>
 					</div>
