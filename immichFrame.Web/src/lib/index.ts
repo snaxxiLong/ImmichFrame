@@ -50,6 +50,40 @@ export interface WeatherForecastEntry {
 
 const authHeaders = () => ({ Authorization: 'Bearer ' + get(authSecretStore) });
 
+export interface WeatherHour {
+	time: string;
+	temperature: number;
+	description: string;
+	iconId: string;
+	precipitationProbability?: number | null;
+	precipitation: number;
+}
+
+export interface WeatherDay {
+	date: string;
+	temperatureMax: number;
+	temperatureMin: number;
+	description: string;
+	iconId: string;
+	precipitationProbability?: number | null;
+	precipitationSum: number;
+	sunrise?: string | null;
+	sunset?: string | null;
+}
+
+export interface WeatherDetails {
+	hours: WeatherHour[];
+	days: WeatherDay[];
+}
+
+export const getWeatherDetails = async (clientIdentifier?: string) => {
+	const params = new URLSearchParams();
+	if (clientIdentifier) params.set('clientIdentifier', clientIdentifier);
+	const res = await fetch(`/api/Weather/Details?${params}`, { headers: authHeaders() });
+	if (!res.ok) throw new Error(`Weather details request failed: ${res.status}`);
+	return (await res.json()) as WeatherDetails;
+};
+
 export interface ScreenBrightness {
 	enabled: boolean;
 	brightness: number;

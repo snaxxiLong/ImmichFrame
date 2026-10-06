@@ -6,4 +6,5 @@ public interface IWeatherService
     Task<IWeather?> GetWeather(double latitude, double longitude);
     Task<IList<ImmichFrame.Core.Models.WeatherForecastEntry>> GetForecast(int count);
     Task<ImmichFrame.Core.Models.ScreenBrightness> GetScreenBrightness();
+    Task<ImmichFrame.Core.Models.WeatherDetails> GetWeatherDetails();
 }

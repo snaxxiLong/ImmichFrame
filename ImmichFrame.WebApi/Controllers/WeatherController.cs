@@ -34,6 +34,14 @@ namespace ImmichFrame.WebApi.Controllers
             return await _weatherService.GetForecast(Math.Clamp(count, 1, 8));
         }
 
+        [HttpGet("Details", Name = "GetWeatherDetails")]
+        public async Task<ImmichFrame.Core.Models.WeatherDetails> GetWeatherDetails(string clientIdentifier = "")
+        {
+            var sanitizedClientIdentifier = clientIdentifier.SanitizeString();
+            _logger.LogDebug("Weather details requested by '{sanitizedClientIdentifier}'", sanitizedClientIdentifier);
+            return await _weatherService.GetWeatherDetails();
+        }
+
         [HttpGet("Brightness", Name = "GetScreenBrightness")]
         public async Task<ImmichFrame.Core.Models.ScreenBrightness> GetScreenBrightness(string clientIdentifier = "")
         {

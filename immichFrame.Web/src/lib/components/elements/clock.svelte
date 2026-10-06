@@ -5,10 +5,25 @@
 	import * as locale from 'date-fns/locale';
 	import { configStore } from '$lib/stores/config.store';
 	import { clientIdentifierStore } from '$lib/stores/persist.store';
+	import { slideshowStore } from '$lib/stores/slideshow.store';
+	import WeatherOverlay from './weather-overlay.svelte';
 
 	api.init();
 
 	let weather = $state<api.IWeather | null>(null);
+	let weatherOverlayOpen = $state(false);
+
+	function openWeatherOverlay(event: MouseEvent) {
+		event.stopPropagation();
+		weatherOverlayOpen = true;
+		slideshowStore.stopProgress.set(true);
+	}
+
+	function closeWeatherOverlay() {
+		if (!weatherOverlayOpen) return;
+		weatherOverlayOpen = false;
+		slideshowStore.restartProgress.set(true);
+	}
 	let forecast = $state<api.WeatherForecastEntry[]>([]);
 
 	const FORECAST_COUNT = 3;
@@ -77,6 +92,7 @@
 	{$configStore.style == 'transition' ? 'bg-linear-to-r from-frame-secondary from-0% pr-10' : ''}
 	{$configStore.style == 'blur' ? 'backdrop-blur-lg rounded-tr-2xl' : ''}	
 	drop-shadow-2xl p-3"
+	style="z-index: 110; pointer-events: none"
 >
 	<p id="clockdate" class="mt-2 text-sm sm:text-sm md:text-md lg:text-xl font-thin text-shadow-sm">
 		{formattedDate()}
@@ -88,7 +104,9 @@
 		{timePortion()}
 	</p>
 	{#if weather}
-    <div id="clockweather" style="zoom: 0.75">
+    <!-- Sits above the slideshow's tap areas; tapping the weather opens the day overview. -->
+    <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+    <div id="clockweather" style="zoom: 0.75; pointer-events: auto; cursor: pointer" onclick={openWeatherOverlay}>
         <div
             id="clockweatherinfo"
             class="text-xl sm:text-xl md:text-2xl lg:text-3xl font-semibold text-shadow-sm weather-info"
@@ -127,3 +145,7 @@
     </div>
 {/if}
 </div>
+
+{#if weatherOverlayOpen && weather}
+	<WeatherOverlay {weather} onClose={closeWeatherOverlay} />
+{/if}

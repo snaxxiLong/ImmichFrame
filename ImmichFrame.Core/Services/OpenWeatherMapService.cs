@@ -10,6 +10,7 @@ public class OpenWeatherMapService : IWeatherService
     private readonly IApiCache _weatherCache = new ApiCache(TimeSpan.FromMinutes(5));
     private readonly IApiCache _forecastCache = new ApiCache(TimeSpan.FromMinutes(15));
     private readonly IApiCache _brightnessCache = new ApiCache(TimeSpan.FromMinutes(15));
+    private readonly IApiCache _detailsCache = new ApiCache(TimeSpan.FromMinutes(30));
     private static readonly HttpClient ForecastHttpClient = new() { Timeout = TimeSpan.FromSeconds(15) };
     public OpenWeatherMapService(IGeneralSettings settings)
     {
@@ -141,6 +142,95 @@ public class OpenWeatherMapService : IWeatherService
         95 or 96 or 99 => german ? "Gewitter" : "Thunderstorm",
         _ => ""
     };
+
+    private const int DetailHours = 24;
+    private const int DetailDays = 4;
+
+    public async Task<WeatherDetails> GetWeatherDetails()
+    {
+        // Hourly and daily forecast for the weather overlay, also from Open-Meteo.
+        var details = await _detailsCache.GetOrAddAsync("details", async () =>
+        {
+            var result = new WeatherDetails();
+            var weatherLatLong = _settings.WeatherLatLong;
+            if (string.IsNullOrWhiteSpace(weatherLatLong))
+                return result;
+
+            var parts = weatherLatLong.Split(',');
+            var lat = double.Parse(parts[0].Trim(), CultureInfo.InvariantCulture);
+            var lon = double.Parse(parts[1].Trim(), CultureInfo.InvariantCulture);
+            var fahrenheit = string.Equals(_settings.UnitSystem, "imperial", StringComparison.OrdinalIgnoreCase);
+            var url = string.Create(CultureInfo.InvariantCulture,
+                $"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}" +
+                "&hourly=temperature_2m,weather_code,is_day,precipitation_probability,precipitation" +
+                "&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_sum,precipitation_probability_max" +
+                $"&forecast_days={DetailDays}&timezone=auto&timeformat=unixtime{(fahrenheit ? "&temperature_unit=fahrenheit&precipitation_unit=inch" : "")}");
+
+            try
+            {
+                using var stream = await ForecastHttpClient.GetStreamAsync(url);
+                using var doc = await JsonDocument.ParseAsync(stream);
+                var german = _settings.Language.StartsWith("de", StringComparison.OrdinalIgnoreCase);
+
+                var hourly = doc.RootElement.GetProperty("hourly");
+                var hTimes = hourly.GetProperty("time");
+                for (var i = 0; i < hTimes.GetArrayLength(); i++)
+                {
+                    var code = hourly.GetProperty("weather_code")[i].GetInt32();
+                    result.Hours.Add(new WeatherHour
+                    {
+                        Time = DateTimeOffset.FromUnixTimeSeconds(hTimes[i].GetInt64()),
+                        Temperature = hourly.GetProperty("temperature_2m")[i].GetDouble(),
+                        Description = WeatherCodeDescription(code, german),
+                        IconId = WeatherCodeIcon(code) + (hourly.GetProperty("is_day")[i].GetInt32() == 1 ? "d" : "n"),
+                        PrecipitationProbability = OptionalInt(hourly.GetProperty("precipitation_probability")[i]),
+                        Precipitation = OptionalDouble(hourly.GetProperty("precipitation")[i]) ?? 0d
+                    });
+                }
+
+                var daily = doc.RootElement.GetProperty("daily");
+                var dTimes = daily.GetProperty("time");
+                for (var i = 0; i < dTimes.GetArrayLength(); i++)
+                {
+                    var code = daily.GetProperty("weather_code")[i].GetInt32();
+                    var sunrise = daily.GetProperty("sunrise")[i];
+                    var sunset = daily.GetProperty("sunset")[i];
+                    result.Days.Add(new WeatherDay
+                    {
+                        Date = DateTimeOffset.FromUnixTimeSeconds(dTimes[i].GetInt64()),
+                        TemperatureMax = daily.GetProperty("temperature_2m_max")[i].GetDouble(),
+                        TemperatureMin = daily.GetProperty("temperature_2m_min")[i].GetDouble(),
+                        Description = WeatherCodeDescription(code, german),
+                        IconId = WeatherCodeIcon(code) + "d",
+                        PrecipitationProbability = OptionalInt(daily.GetProperty("precipitation_probability_max")[i]),
+                        PrecipitationSum = OptionalDouble(daily.GetProperty("precipitation_sum")[i]) ?? 0d,
+                        Sunrise = sunrise.ValueKind == JsonValueKind.Number ? DateTimeOffset.FromUnixTimeSeconds(sunrise.GetInt64()) : null,
+                        Sunset = sunset.ValueKind == JsonValueKind.Number ? DateTimeOffset.FromUnixTimeSeconds(sunset.GetInt64()) : null
+                    });
+                }
+            }
+            catch
+            {
+                //do nothing and return what we have
+            }
+
+            return result;
+        });
+
+        // The cached series starts at midnight; hand out the next 24 hours from the current hour on.
+        var hourStart = DateTimeOffset.UtcNow.AddHours(-1);
+        return new WeatherDetails
+        {
+            Hours = details.Hours.Where(h => h.Time > hourStart).Take(DetailHours).ToList(),
+            Days = details.Days
+        };
+    }
+
+    private static int? OptionalInt(JsonElement element)
+        => element.ValueKind == JsonValueKind.Number ? (int)Math.Round(element.GetDouble()) : null;
+
+    private static double? OptionalDouble(JsonElement element)
+        => element.ValueKind == JsonValueKind.Number ? element.GetDouble() : null;
 
     // Global horizontal irradiance at which the screen reaches its maximum brightness. A bright
     // overcast day is around 200-300 W/m², direct midday sun in summer 700-900 W/m².
