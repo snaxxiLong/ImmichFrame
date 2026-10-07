@@ -38,7 +38,7 @@
 
 	const AUTO_CLOSE_MS = 60000;
 	// 'slide': parked just below the screen and slid in as one layer.
-	// 'fade': lies on the screen at almost zero opacity, so the browser surely paints it ahead of
+	// 'fade': lies on the screen at almost zero opacity (1/255, invisible), so the browser surely paints it ahead of
 	// time, and is faded in. Either way only transform/opacity change, which old GPUs can animate
 	// without redrawing the page every frame.
 	const ANIMATION: 'slide' | 'fade' = 'fade';
@@ -48,7 +48,7 @@
 	const animationStyle = $derived(
 		ANIMATION === 'slide'
 			? `transform: translateY(${open ? '0' : '100%'}); transition: transform ${SLIDE_MS}ms cubic-bezier(0.2, 0.8, 0.2, 1); will-change: transform`
-			: `opacity: ${open ? 1 : 0.01}; transition: opacity ${FADE_MS}ms ease-out; will-change: opacity`
+			: `opacity: ${open ? 1 : 0.004}; transition: opacity ${FADE_MS}ms ease-out; will-change: opacity`
 	);
 	const LABEL_EVERY = 2;
 	const NEXT_DAYS = 5;
