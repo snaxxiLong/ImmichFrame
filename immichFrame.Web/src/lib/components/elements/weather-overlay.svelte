@@ -126,11 +126,10 @@
 
 	onMount(() => {
 		requestAnimationFrame(() =>
-			requestAnimationFrame(() =>
-				console.info(
-					`wx-latency ${Math.round(performance.now() - ((window as unknown as { __wxTap?: number }).__wxTap ?? 0))}ms`
-				)
-			)
+			requestAnimationFrame(() => {
+				const ms = Math.round(performance.now() - ((window as unknown as { __wxTap?: number }).__wxTap ?? 0));
+				api.getScreenBrightness(`wxlat${ms}ms`).catch(() => {});
+			})
 		);
 		if (!hasData(preloaded)) {
 			api
