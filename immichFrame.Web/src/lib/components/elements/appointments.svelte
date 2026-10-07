@@ -4,6 +4,7 @@
 	import { format } from 'date-fns';
 	import { configStore } from '$lib/stores/config.store';
 	import { clientIdentifierStore } from '$lib/stores/persist.store';
+	import { weatherOverlayOpenStore } from '$lib/stores/weather-overlay.store';
 
 	api.init();
 
@@ -52,6 +53,7 @@
 	<div
 		id="appointments"
 		class="fixed top-0 right-0 w-auto z-10 text-center text-frame-primary m-5 max-w-[20%] hidden md:block md:min-w-[10%]"
+		style="visibility: {$weatherOverlayOpenStore ? 'hidden' : 'visible'}"
 	>
 		<!-- <div class="text-4xl mx-8 font-bold">Appointments</div> -->
 		<div class="">

@@ -5,6 +5,7 @@
 	import * as locale from 'date-fns/locale';
 	import { configStore } from '$lib/stores/config.store';
 	import { clientIdentifierStore } from '$lib/stores/persist.store';
+	import { weatherOverlayOpenStore } from '$lib/stores/weather-overlay.store';
 	import WeatherOverlay from './weather-overlay.svelte';
 
 	api.init();
@@ -19,10 +20,12 @@
 	function openWeatherOverlay(event: MouseEvent) {
 		event.stopPropagation();
 		weatherOverlayOpen = true;
+		weatherOverlayOpenStore.set(true);
 	}
 
 	function closeWeatherOverlay() {
 		weatherOverlayOpen = false;
+		weatherOverlayOpenStore.set(false);
 	}
 	let forecast = $state<api.WeatherForecastEntry[]>([]);
 
