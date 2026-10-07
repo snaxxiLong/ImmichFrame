@@ -45,7 +45,8 @@
 	const LABEL_EVERY = 2;
 
 	let fetched = $state<api.WeatherDetails | null>(null);
-	const details = $derived(preloaded ?? fetched);
+	const hasData = (d?: api.WeatherDetails | null) => !!d?.hours?.length;
+	const details = $derived(hasData(preloaded) ? preloaded : fetched);
 	let failed = $state(false);
 
 	const isGerman = $derived(($configStore.language ?? '').toLowerCase().startsWith('de'));
@@ -112,10 +113,13 @@
 			: format(new Date(iso), 'EEEE', { locale: dateLocale });
 
 	onMount(() => {
-		if (!preloaded) {
+		if (!hasData(preloaded)) {
 			api
 				.getWeatherDetails($clientIdentifierStore)
-				.then((d) => (fetched = d))
+				.then((d) => {
+					fetched = d;
+					failed = !hasData(d);
+				})
 				.catch((err) => {
 					console.error('Error fetching weather details:', err);
 					failed = true;

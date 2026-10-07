@@ -69,7 +69,7 @@ public class OpenWeatherMapService : IWeatherService
         // OpenWeatherMap's free plan only has 3 hour steps, so the forecast comes from Open-Meteo,
         // which offers hourly data without an API key. Icons are mapped to OpenWeatherMap icon ids
         // so the configured WeatherIconUrl keeps working.
-        var all = await _forecastCache.GetOrAddAsync("forecast", async () =>
+        var all = await GetOrFetch(_forecastCache, "forecast", new List<WeatherForecastEntry>(), async () =>
         {
             var entries = new List<WeatherForecastEntry>();
             var weatherLatLong = _settings.WeatherLatLong;
@@ -83,31 +83,24 @@ public class OpenWeatherMapService : IWeatherService
             var url = string.Create(CultureInfo.InvariantCulture,
                 $"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&hourly=temperature_2m,weather_code,is_day&forecast_hours=24&timezone=UTC&timeformat=unixtime{(fahrenheit ? "&temperature_unit=fahrenheit" : "")}");
 
-            try
+            using var stream = await ForecastHttpClient.GetStreamAsync(url);
+            using var doc = await JsonDocument.ParseAsync(stream);
+            var hourly = doc.RootElement.GetProperty("hourly");
+            var times = hourly.GetProperty("time");
+            var temps = hourly.GetProperty("temperature_2m");
+            var codes = hourly.GetProperty("weather_code");
+            var isDay = hourly.GetProperty("is_day");
+            var german = _settings.Language.StartsWith("de", StringComparison.OrdinalIgnoreCase);
+            for (var i = 0; i < times.GetArrayLength(); i++)
             {
-                using var stream = await ForecastHttpClient.GetStreamAsync(url);
-                using var doc = await JsonDocument.ParseAsync(stream);
-                var hourly = doc.RootElement.GetProperty("hourly");
-                var times = hourly.GetProperty("time");
-                var temps = hourly.GetProperty("temperature_2m");
-                var codes = hourly.GetProperty("weather_code");
-                var isDay = hourly.GetProperty("is_day");
-                var german = _settings.Language.StartsWith("de", StringComparison.OrdinalIgnoreCase);
-                for (var i = 0; i < times.GetArrayLength(); i++)
+                var code = codes[i].GetInt32();
+                entries.Add(new WeatherForecastEntry
                 {
-                    var code = codes[i].GetInt32();
-                    entries.Add(new WeatherForecastEntry
-                    {
-                        Time = DateTimeOffset.FromUnixTimeSeconds(times[i].GetInt64()),
-                        Temperature = temps[i].GetDouble(),
-                        Description = WeatherCodeDescription(code, german),
-                        IconId = WeatherCodeIcon(code) + (isDay[i].GetInt32() == 1 ? "d" : "n")
-                    });
-                }
-            }
-            catch
-            {
-                //do nothing and return what we have
+                    Time = DateTimeOffset.FromUnixTimeSeconds(times[i].GetInt64()),
+                    Temperature = temps[i].GetDouble(),
+                    Description = WeatherCodeDescription(code, german),
+                    IconId = WeatherCodeIcon(code) + (isDay[i].GetInt32() == 1 ? "d" : "n")
+                });
             }
 
             return entries;
@@ -155,7 +148,7 @@ public class OpenWeatherMapService : IWeatherService
     public async Task<WeatherDetails> GetWeatherDetails()
     {
         // Hourly and daily forecast for the weather overlay, also from Open-Meteo.
-        var details = await _detailsCache.GetOrAddAsync("details", async () =>
+        var details = await GetOrFetch(_detailsCache, "details", new WeatherDetails(), async () =>
         {
             var result = new WeatherDetails();
             var weatherLatLong = _settings.WeatherLatLong;
@@ -171,52 +164,45 @@ public class OpenWeatherMapService : IWeatherService
             var url = string.Create(CultureInfo.InvariantCulture,
                 $"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&hourly={hourlyFields}&daily={dailyFields}&forecast_days={DetailDays}&timezone=auto&timeformat=unixtime{(fahrenheit ? "&temperature_unit=fahrenheit&precipitation_unit=inch" : "")}");
 
-            try
+            using var stream = await ForecastHttpClient.GetStreamAsync(url);
+            using var doc = await JsonDocument.ParseAsync(stream);
+            var german = _settings.Language.StartsWith("de", StringComparison.OrdinalIgnoreCase);
+
+            var hourly = doc.RootElement.GetProperty("hourly");
+            var hTimes = hourly.GetProperty("time");
+            for (var i = 0; i < hTimes.GetArrayLength(); i++)
             {
-                using var stream = await ForecastHttpClient.GetStreamAsync(url);
-                using var doc = await JsonDocument.ParseAsync(stream);
-                var german = _settings.Language.StartsWith("de", StringComparison.OrdinalIgnoreCase);
-
-                var hourly = doc.RootElement.GetProperty("hourly");
-                var hTimes = hourly.GetProperty("time");
-                for (var i = 0; i < hTimes.GetArrayLength(); i++)
+                var code = hourly.GetProperty("weather_code")[i].GetInt32();
+                result.Hours.Add(new WeatherHour
                 {
-                    var code = hourly.GetProperty("weather_code")[i].GetInt32();
-                    result.Hours.Add(new WeatherHour
-                    {
-                        Time = DateTimeOffset.FromUnixTimeSeconds(hTimes[i].GetInt64()),
-                        Temperature = hourly.GetProperty("temperature_2m")[i].GetDouble(),
-                        Description = WeatherCodeDescription(code, german),
-                        IconId = WeatherCodeIcon(code) + (hourly.GetProperty("is_day")[i].GetInt32() == 1 ? "d" : "n"),
-                        PrecipitationProbability = OptionalInt(hourly.GetProperty("precipitation_probability")[i]),
-                        Precipitation = OptionalDouble(hourly.GetProperty("precipitation")[i]) ?? 0d
-                    });
-                }
-
-                var daily = doc.RootElement.GetProperty("daily");
-                var dTimes = daily.GetProperty("time");
-                for (var i = 0; i < dTimes.GetArrayLength(); i++)
-                {
-                    var code = daily.GetProperty("weather_code")[i].GetInt32();
-                    var sunrise = daily.GetProperty("sunrise")[i];
-                    var sunset = daily.GetProperty("sunset")[i];
-                    result.Days.Add(new WeatherDay
-                    {
-                        Date = DateTimeOffset.FromUnixTimeSeconds(dTimes[i].GetInt64()),
-                        TemperatureMax = daily.GetProperty("temperature_2m_max")[i].GetDouble(),
-                        TemperatureMin = daily.GetProperty("temperature_2m_min")[i].GetDouble(),
-                        Description = WeatherCodeDescription(code, german),
-                        IconId = WeatherCodeIcon(code) + "d",
-                        PrecipitationProbability = OptionalInt(daily.GetProperty("precipitation_probability_max")[i]),
-                        PrecipitationSum = OptionalDouble(daily.GetProperty("precipitation_sum")[i]) ?? 0d,
-                        Sunrise = sunrise.ValueKind == JsonValueKind.Number ? DateTimeOffset.FromUnixTimeSeconds(sunrise.GetInt64()) : null,
-                        Sunset = sunset.ValueKind == JsonValueKind.Number ? DateTimeOffset.FromUnixTimeSeconds(sunset.GetInt64()) : null
-                    });
-                }
+                    Time = DateTimeOffset.FromUnixTimeSeconds(hTimes[i].GetInt64()),
+                    Temperature = hourly.GetProperty("temperature_2m")[i].GetDouble(),
+                    Description = WeatherCodeDescription(code, german),
+                    IconId = WeatherCodeIcon(code) + (hourly.GetProperty("is_day")[i].GetInt32() == 1 ? "d" : "n"),
+                    PrecipitationProbability = OptionalInt(hourly.GetProperty("precipitation_probability")[i]),
+                    Precipitation = OptionalDouble(hourly.GetProperty("precipitation")[i]) ?? 0d
+                });
             }
-            catch
+
+            var daily = doc.RootElement.GetProperty("daily");
+            var dTimes = daily.GetProperty("time");
+            for (var i = 0; i < dTimes.GetArrayLength(); i++)
             {
-                //do nothing and return what we have
+                var code = daily.GetProperty("weather_code")[i].GetInt32();
+                var sunrise = daily.GetProperty("sunrise")[i];
+                var sunset = daily.GetProperty("sunset")[i];
+                result.Days.Add(new WeatherDay
+                {
+                    Date = DateTimeOffset.FromUnixTimeSeconds(dTimes[i].GetInt64()),
+                    TemperatureMax = daily.GetProperty("temperature_2m_max")[i].GetDouble(),
+                    TemperatureMin = daily.GetProperty("temperature_2m_min")[i].GetDouble(),
+                    Description = WeatherCodeDescription(code, german),
+                    IconId = WeatherCodeIcon(code) + "d",
+                    PrecipitationProbability = OptionalInt(daily.GetProperty("precipitation_probability_max")[i]),
+                    PrecipitationSum = OptionalDouble(daily.GetProperty("precipitation_sum")[i]) ?? 0d,
+                    Sunrise = sunrise.ValueKind == JsonValueKind.Number ? DateTimeOffset.FromUnixTimeSeconds(sunrise.GetInt64()) : null,
+                    Sunset = sunset.ValueKind == JsonValueKind.Number ? DateTimeOffset.FromUnixTimeSeconds(sunset.GetInt64()) : null
+                });
             }
 
             return result;
@@ -231,6 +217,20 @@ public class OpenWeatherMapService : IWeatherService
             Hours = details.Hours.Where(h => h.Time >= todayStart).Take(DetailHours).ToList(),
             Days = details.Days.Where(d => d.Date >= todayStart).ToList()
         };
+    }
+
+    // Open-Meteo results are cached, but a failed fetch is not: the exception keeps it out of the cache,
+    // so the next request tries again instead of serving an empty result for the whole cache period.
+    private static async Task<T> GetOrFetch<T>(IApiCache cache, string key, T fallback, Func<Task<T>> fetch)
+    {
+        try
+        {
+            return await cache.GetOrAddAsync(key, fetch);
+        }
+        catch
+        {
+            return fallback;
+        }
     }
 
     private static int? OptionalInt(JsonElement element)
@@ -250,7 +250,7 @@ public class OpenWeatherMapService : IWeatherService
 
         // Outdoor brightness from Open-Meteo's 15 minute shortwave radiation, which covers both the
         // sun's position and the cloud cover. Values in between are interpolated for smooth changes.
-        var series = await _brightnessCache.GetOrAddAsync("irradiance", async () =>
+        var series = await GetOrFetch(_brightnessCache, "irradiance", new List<(DateTimeOffset Time, double Irradiance)>(), async () =>
         {
             var points = new List<(DateTimeOffset Time, double Irradiance)>();
             var weatherLatLong = _settings.WeatherLatLong;
@@ -263,22 +263,15 @@ public class OpenWeatherMapService : IWeatherService
             var url = string.Create(CultureInfo.InvariantCulture,
                 $"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&minutely_15=shortwave_radiation&past_minutely_15=4&forecast_minutely_15=8&timezone=UTC&timeformat=unixtime");
 
-            try
+            using var stream = await ForecastHttpClient.GetStreamAsync(url);
+            using var doc = await JsonDocument.ParseAsync(stream);
+            var minutely = doc.RootElement.GetProperty("minutely_15");
+            var times = minutely.GetProperty("time");
+            var values = minutely.GetProperty("shortwave_radiation");
+            for (var i = 0; i < times.GetArrayLength(); i++)
             {
-                using var stream = await ForecastHttpClient.GetStreamAsync(url);
-                using var doc = await JsonDocument.ParseAsync(stream);
-                var minutely = doc.RootElement.GetProperty("minutely_15");
-                var times = minutely.GetProperty("time");
-                var values = minutely.GetProperty("shortwave_radiation");
-                for (var i = 0; i < times.GetArrayLength(); i++)
-                {
-                    if (values[i].ValueKind == JsonValueKind.Number)
-                        points.Add((DateTimeOffset.FromUnixTimeSeconds(times[i].GetInt64()), values[i].GetDouble()));
-                }
-            }
-            catch
-            {
-                //do nothing and return what we have
+                if (values[i].ValueKind == JsonValueKind.Number)
+                    points.Add((DateTimeOffset.FromUnixTimeSeconds(times[i].GetInt64()), values[i].GetDouble()));
             }
 
             return points;
