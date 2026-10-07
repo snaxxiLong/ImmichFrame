@@ -47,7 +47,8 @@
 		const today = startOfDay(now);
 		if (isSameDay(day, today)) return isGerman ? 'Heute' : 'Today';
 		if (isSameDay(day, addDays(today, 1))) return isGerman ? 'Morgen' : 'Tomorrow';
-		return format(day, isGerman ? 'eee, d. MMM' : 'eee, MMM d', { locale: dateLocale });
+		// Compact: "Sa, 10 Okt" without the abbreviation dots
+		return format(day, isGerman ? 'eee, d MMM' : 'eee, MMM d', { locale: dateLocale }).replace(/./g, '');
 	};
 
 	// Short, quiet time line above the title.
