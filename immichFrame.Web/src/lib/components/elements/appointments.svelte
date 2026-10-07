@@ -110,16 +110,16 @@
 	<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 	<div
 		id="appointments"
-		class="fixed top-0 right-0 w-auto text-frame-primary max-w-[24%] hidden md:block md:min-w-[14%] pt-4"
+		class="fixed top-0 right-0 w-auto text-frame-primary max-w-[24%] hidden md:block md:min-w-[10%] pt-4"
 		style="z-index: 110; pointer-events: auto; cursor: pointer; visibility: {$weatherOverlayOpenStore || $calendarOverlayOpenStore ? 'hidden' : 'visible'}"
 		onclick={openCalendar}
 	>
 		{#each upcoming as appointment}
 			<!-- Every appointment on its own background, with a small gap in between -->
 			<div
-				class="mb-2 text-left drop-shadow-2xl text-shadow-sm p-3
+				class="mb-2 text-left drop-shadow-2xl text-shadow-sm py-3 pr-2 pl-3
 				{$configStore.style == 'solid' ? 'bg-frame-secondary rounded-l-2xl' : ''}
-				{$configStore.style == 'transition' ? 'bg-linear-to-l from-frame-secondary from-50% pl-12' : ''}
+				{$configStore.style == 'transition' ? 'bg-linear-to-l from-frame-secondary from-40% pl-6' : ''}
 				{$configStore.style == 'blur' ? 'backdrop-blur-lg rounded-l-2xl' : ''}"
 			>
 				<p class="text-xs font-light opacity-75">{whenLabel(appointment)}</p>
