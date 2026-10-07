@@ -11,8 +11,9 @@
 		/** Details preloaded by the clock; fetched here only if they are not available yet. */
 		preloaded?: api.WeatherDetails | null;
 		/**
-		 * The overlay stays mounted (but invisible) so layout, chart and icons are ready when it opens;
-		 * building it on tap took seconds on slow frames.
+		 * The overlay stays mounted, parked just below the screen on its own GPU layer. It is not
+		 * display:none or visibility:hidden, because browsers do not paint hidden elements: the browser
+		 * can paint it ahead of time, and opening only slides the finished layer in.
 		 */
 		open?: boolean;
 		onClose: () => void;
@@ -163,7 +164,8 @@
 <div
 	id="weatheroverlay"
 	class="fixed inset-0"
-	style="z-index: 300; background-color: {SCRIM}; visibility: {open ? 'visible' : 'hidden'}; pointer-events: {open ? 'auto' : 'none'}; transform: translateY({open ? '0' : '100%'}); transition: transform {SLIDE_MS}ms cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s linear {open ? 0 : SLIDE_MS}ms; will-change: transform"
+	aria-hidden={!open}
+	style="z-index: 300; background-color: {SCRIM}; pointer-events: {open ? 'auto' : 'none'}; transform: translateY({open ? '0' : '100%'}); transition: transform {SLIDE_MS}ms cubic-bezier(0.2, 0.8, 0.2, 1); will-change: transform"
 	onclick={onClose}
 >
 	<div
