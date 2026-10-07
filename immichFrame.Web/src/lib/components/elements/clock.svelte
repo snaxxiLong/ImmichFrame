@@ -153,6 +153,6 @@
 {/if}
 </div>
 
-{#if weatherOverlayOpen && weather}
-	<WeatherOverlay {weather} preloaded={weatherDetails} onClose={closeWeatherOverlay} />
+{#if weather}
+	<WeatherOverlay {weather} preloaded={weatherDetails} open={weatherOverlayOpen} onClose={closeWeatherOverlay} />
 {/if}

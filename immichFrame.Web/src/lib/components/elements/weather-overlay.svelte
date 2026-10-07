@@ -10,10 +10,15 @@
 		weather: api.IWeather;
 		/** Details preloaded by the clock; fetched here only if they are not available yet. */
 		preloaded?: api.WeatherDetails | null;
+		/**
+		 * The overlay stays mounted (but invisible) so layout, chart and icons are ready when it opens;
+		 * building it on tap took seconds on slow frames.
+		 */
+		open?: boolean;
 		onClose: () => void;
 	}
 
-	let { weather, preloaded = null, onClose }: Props = $props();
+	let { weather, preloaded = null, open = false, onClose }: Props = $props();
 
 	// Plain colors: older Android WebViews ignore Tailwind's oklch() palette. The overlay is see-through,
 	// so the photos keep running behind a dark scrim; shadows keep text and marks readable on top.
@@ -107,11 +112,14 @@
 	const hourLabel = (iso: string, i: number) =>
 		i === hours.length - 1 && i > 0 ? '24:00' : format(new Date(iso), 'HH:mm');
 
+	// Refreshed whenever the overlay opens, because it can stay mounted for hours.
+	let nowMs = $state(Date.now());
+
 	// Current time as a position on the hour axis (column centers are the full hours).
 	const nowX = $derived.by(() => {
 		if (!hours.length) return null;
 		const start = new Date(hours[0].time).getTime();
-		const hoursSinceStart = (Date.now() - start) / 3600000;
+		const hoursSinceStart = (nowMs - start) / 3600000;
 		if (hoursSinceStart < 0 || hoursSinceStart > hours.length - 1) return null;
 		return padX + (hoursSinceStart + 0.5) * columnWidth;
 	});
@@ -125,12 +133,6 @@
 			: format(new Date(iso), 'EEEE', { locale: dateLocale });
 
 	onMount(() => {
-		requestAnimationFrame(() =>
-			requestAnimationFrame(() => {
-				const ms = Math.round(performance.now() - ((window as unknown as { __wxTap?: number }).__wxTap ?? 0));
-				api.getScreenBrightness(`wxlat${ms}ms`).catch(() => {});
-			})
-		);
 		if (!hasData(preloaded)) {
 			api
 				.getWeatherDetails($clientIdentifierStore)
@@ -143,6 +145,18 @@
 					failed = true;
 				});
 		}
+	});
+
+	// While open: close automatically after a while.
+	$effect(() => {
+		if (!open) return;
+		nowMs = Date.now();
+		requestAnimationFrame(() =>
+			requestAnimationFrame(() => {
+				const ms = Math.round(performance.now() - ((window as unknown as { __wxTap?: number }).__wxTap ?? 0));
+				api.getScreenBrightness(`wxlat${ms}ms`).catch(() => {});
+			})
+		);
 		const timeout = setTimeout(onClose, AUTO_CLOSE_MS);
 		return () => clearTimeout(timeout);
 	});
@@ -152,7 +166,7 @@
 <div
 	id="weatheroverlay"
 	class="fixed inset-0"
-	style="z-index: 300; background-color: {SCRIM}"
+	style="z-index: 300; background-color: {SCRIM}; visibility: {open ? 'visible' : 'hidden'}; pointer-events: {open ? 'auto' : 'none'}"
 	onclick={onClose}
 >
 	<div
@@ -195,7 +209,7 @@
 					width={chartWidth}
 					height={chartHeight}
 					viewBox="0 0 {chartWidth} {chartHeight}"
-					style="position: absolute; inset: 0; display: block; overflow: visible; filter: drop-shadow(0 1px 3px {SHADOW})"
+					style="position: absolute; inset: 0; display: block; overflow: visible"
 				>
 					<text x="0" y={px(18)} fill={TEXT_MUTED} font-size={px(20)}>
 						{isGerman ? 'Temperatur heute' : 'Temperature today'}
