@@ -31,18 +31,8 @@
 		'display: inline-block; width: 0.2em; height: 0.2em; border-radius: 50%; background-color: currentColor; vertical-align: middle; margin: 0 0.5em';
 
 	const AUTO_CLOSE_MS = 60000;
-
-	// Chart geometry in SVG units; the SVG scales uniformly with the panel width.
-	const WIDTH = 1200;
-	const TEMP_TOP = 40;
-	const TEMP_BOTTOM = 150;
-	const RAIN_TOP = 185;
-	const RAIN_BOTTOM = 245;
-	const TIME_Y = 280;
-	const ICON_Y = 292;
-	const ICON_SIZE = 44;
-	const HEIGHT = 345;
 	const LABEL_EVERY = 2;
+	const NEXT_DAYS = 5;
 
 	let fetched = $state<api.WeatherDetails | null>(null);
 	const hasData = (d?: api.WeatherDetails | null) => !!d?.hours?.length;
@@ -57,13 +47,32 @@
 
 	const hours = $derived(details?.hours ?? []);
 	const today = $derived(details?.days?.[0]);
-	const NEXT_DAYS = 5;
 	const nextDays = $derived((details?.days ?? []).slice(1, 1 + NEXT_DAYS));
 
+	// The chart fills whatever height is left between the header and the day row. Its SVG uses the
+	// real pixel size, and all chart text and spacing scale with that height.
+	let chartWidth = $state(0);
+	let chartHeight = $state(0);
+	const scale = $derived(Math.min(2.2, Math.max(0.8, chartHeight / 360)));
+	const px = (n: number) => Math.round(n * scale);
+
+	const layout = $derived.by(() => {
+		const iconSize = px(44);
+		const iconY = chartHeight - iconSize;
+		const timeY = iconY - px(10);
+		const rainBottom = timeY - px(20) - px(14);
+		const rainTop = rainBottom - Math.max(px(50), chartHeight * 0.17);
+		const rainTitleY = rainTop - px(10);
+		const tempBottom = rainTitleY - px(20) - px(16);
+		// Room for the panel title and the value labels above the highest point.
+		const tempTop = px(18) + px(22) + px(18);
+		return { iconSize, iconY, timeY, rainBottom, rainTop, rainTitleY, tempBottom, tempTop };
+	});
+
 	// Side padding so the 00:00 and 24:00 labels are not cut off at the edges.
-	const PAD_X = 28;
-	const columnWidth = $derived(hours.length ? (WIDTH - 2 * PAD_X) / hours.length : WIDTH);
-	const xAt = (i: number) => PAD_X + (i + 0.5) * columnWidth;
+	const padX = $derived(px(28));
+	const columnWidth = $derived(hours.length ? (chartWidth - 2 * padX) / hours.length : chartWidth);
+	const xAt = (i: number) => padX + (i + 0.5) * columnWidth;
 
 	const tempRange = $derived.by(() => {
 		if (!hours.length) return { min: 0, max: 1 };
@@ -76,20 +85,22 @@
 	});
 
 	const yForTemp = (t: number) =>
-		TEMP_BOTTOM - ((t - tempRange.min) / (tempRange.max - tempRange.min)) * (TEMP_BOTTOM - TEMP_TOP);
+		layout.tempBottom -
+		((t - tempRange.min) / (tempRange.max - tempRange.min)) * (layout.tempBottom - layout.tempTop);
 
 	const tempPath = $derived(
 		hours.map((h, i) => `${i === 0 ? 'M' : 'L'}${xAt(i).toFixed(1)},${yForTemp(h.temperature).toFixed(1)}`).join(' ')
 	);
 
-	const rainHeight = (p?: number | null) => ((p ?? 0) / 100) * (RAIN_BOTTOM - RAIN_TOP);
+	const rainHeight = (p?: number | null) => ((p ?? 0) / 100) * (layout.rainBottom - layout.rainTop);
 
 	// Bar with 4px rounded top, anchored square to the baseline.
 	const barPath = (x: number, w: number, h: number) => {
 		if (h <= 0) return '';
 		const r = Math.min(4, h, w / 2);
-		const top = RAIN_BOTTOM - h;
-		return `M${x},${RAIN_BOTTOM} V${top + r} Q${x},${top} ${x + r},${top} H${x + w - r} Q${x + w},${top} ${x + w},${top + r} V${RAIN_BOTTOM} Z`;
+		const bottom = layout.rainBottom;
+		const top = bottom - h;
+		return `M${x},${bottom} V${top + r} Q${x},${top} ${x + r},${top} H${x + w - r} Q${x + w},${top} ${x + w},${top + r} V${bottom} Z`;
 	};
 
 	// The series runs from today 00:00 to 24:00; the last point is tomorrow's midnight.
@@ -102,7 +113,7 @@
 		const start = new Date(hours[0].time).getTime();
 		const hoursSinceStart = (Date.now() - start) / 3600000;
 		if (hoursSinceStart < 0 || hoursSinceStart > hours.length - 1) return null;
-		return PAD_X + (hoursSinceStart + 0.5) * columnWidth;
+		return padX + (hoursSinceStart + 0.5) * columnWidth;
 	});
 
 	const time = (iso?: string | null) => (iso ? format(new Date(iso), 'HH:mm') : '–');
@@ -139,26 +150,26 @@
 	onclick={onClose}
 >
 	<div
-		class="flex flex-col justify-between"
-		style="width: 100vw; height: 100vh; padding: 4vh 4vw; box-sizing: border-box; color: {TEXT}; text-shadow: 0 1px 4px {SHADOW}"
+		class="flex flex-col"
+		style="width: 100vw; height: 100vh; padding: 3.5vh 3.5vw 2vh; box-sizing: border-box; gap: 2.5vh; color: {TEXT}; text-shadow: 0 1px 4px {SHADOW}"
 	>
 		<!-- Now and today -->
-		<div class="flex items-center justify-between" style="gap: 3vw">
+		<div class="flex items-center justify-between" style="flex: none; gap: 3vw">
 			<div class="flex items-center" style="gap: 1.5vw">
 				{#if $configStore.weatherIconUrl && weather.iconId}
-					<img src={iconUrl(weather.iconId)} alt="" style="width: 12vh; height: 12vh" />
+					<img src={iconUrl(weather.iconId)} alt="" style="width: 15vh; height: 15vh" />
 				{/if}
 				<div>
-					<div style="font-size: 9vh; font-weight: 700; line-height: 1">
+					<div style="font-size: 12vh; font-weight: 700; line-height: 1">
 						{Math.round(weather.temperature ?? 0)}°
 					</div>
-					<div style="font-size: 3vh; color: {TEXT_MUTED}">
+					<div style="font-size: 3.6vh; color: {TEXT_MUTED}">
 						{weather.description}<span style={SEPARATOR}></span>{weather.location}
 					</div>
 				</div>
 			</div>
 			{#if today}
-				<div class="grid" style="grid-template-columns: auto auto; column-gap: 2vw; row-gap: 0.8vh; font-size: 3vh">
+				<div class="grid" style="grid-template-columns: auto auto; column-gap: 2vw; row-gap: 1vh; font-size: 3.6vh">
 					<span style="color: {TEXT_MUTED}">{isGerman ? 'Höchst / Tiefst' : 'High / Low'}</span>
 					<span style="font-weight: 600">{Math.round(today.temperatureMax)}° / {Math.round(today.temperatureMin)}°</span>
 					<span style="color: {TEXT_MUTED}">{isGerman ? 'Regen' : 'Rain'}</span>
@@ -172,98 +183,118 @@
 		</div>
 
 		<!-- Today 00:00-24:00: temperature line and rain probability bars as two stacked panels on one time axis -->
-		{#if hours.length}
-			<svg
-				viewBox="0 0 {WIDTH} {HEIGHT}"
-				style="width: 100%; height: auto; display: block; filter: drop-shadow(0 1px 3px {SHADOW})"
-			>
-				<text x="0" y="18" fill={TEXT_MUTED} font-size="20">
-					{isGerman ? 'Temperatur heute' : 'Temperature today'}
-				</text>
-				<line x1="0" x2={WIDTH} y1={TEMP_BOTTOM + 10} y2={TEMP_BOTTOM + 10} stroke={GRID} stroke-width="1" />
-				{#if nowX !== null}
-					<!-- Two segments, leaving the rain panel title free -->
-					<line x1={nowX} x2={nowX} y1={TEMP_TOP - 10} y2={TEMP_BOTTOM + 10} stroke={NOW_COLOR} stroke-width="2" stroke-dasharray="4 6" />
-					<line x1={nowX} x2={nowX} y1={RAIN_TOP} y2={RAIN_BOTTOM} stroke={NOW_COLOR} stroke-width="2" stroke-dasharray="4 6" />
-					<text x={nowX + 8} y={RAIN_TOP + 14} fill={TEXT_MUTED} font-size="16">
-						{isGerman ? 'Jetzt' : 'Now'}
+		<div style="flex: 1 1 auto; min-height: 0; position: relative" bind:clientWidth={chartWidth} bind:clientHeight={chartHeight}>
+			{#if hours.length && chartWidth > 0 && chartHeight > 0}
+				<svg
+					width={chartWidth}
+					height={chartHeight}
+					viewBox="0 0 {chartWidth} {chartHeight}"
+					style="position: absolute; inset: 0; display: block; overflow: visible; filter: drop-shadow(0 1px 3px {SHADOW})"
+				>
+					<text x="0" y={px(18)} fill={TEXT_MUTED} font-size={px(20)}>
+						{isGerman ? 'Temperatur heute' : 'Temperature today'}
 					</text>
-				{/if}
-				<path d={tempPath} fill="none" stroke={TEMP_COLOR} stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
-				{#each hours as hour, i (hour.time)}
-					{#if i % LABEL_EVERY === 0}
-						<circle cx={xAt(i)} cy={yForTemp(hour.temperature)} r="5" fill={TEMP_COLOR} />
-						<text x={xAt(i)} y={yForTemp(hour.temperature) - 14} text-anchor="middle" fill={TEXT} font-size="22" font-weight="600">
-							{Math.round(hour.temperature)}°
+					<line x1="0" x2={chartWidth} y1={layout.tempBottom + px(10)} y2={layout.tempBottom + px(10)} stroke={GRID} stroke-width="1" />
+					{#if nowX !== null}
+						<!-- Two segments, leaving the rain panel title free -->
+						<line x1={nowX} x2={nowX} y1={layout.tempTop - px(14)} y2={layout.tempBottom + px(10)} stroke={NOW_COLOR} stroke-width="2" stroke-dasharray="4 6" />
+						<line x1={nowX} x2={nowX} y1={layout.rainTop} y2={layout.rainBottom} stroke={NOW_COLOR} stroke-width="2" stroke-dasharray="4 6" />
+						<text x={nowX + px(8)} y={layout.rainTop + px(14)} fill={TEXT_MUTED} font-size={px(16)}>
+							{isGerman ? 'Jetzt' : 'Now'}
 						</text>
 					{/if}
-				{/each}
-
-				<text x="0" y={RAIN_TOP - 12} fill={TEXT_MUTED} font-size="20">
-					{isGerman ? 'Regenwahrscheinlichkeit' : 'Chance of rain'}
-				</text>
-				<line x1="0" x2={WIDTH} y1={RAIN_BOTTOM} y2={RAIN_BOTTOM} stroke={GRID} stroke-width="1" />
-				{#if !hours.some((h) => (h.precipitationProbability ?? 0) > 0)}
-					<text x={WIDTH / 2} y={RAIN_BOTTOM - 22} text-anchor="middle" fill={TEXT_MUTED} font-size="20">
-						{isGerman ? 'Kein Regen erwartet' : 'No rain expected'}
-					</text>
-				{/if}
-				{#each hours as hour, i (hour.time)}
-					<path d={barPath(PAD_X + i * columnWidth + 1, columnWidth - 2, rainHeight(hour.precipitationProbability))} fill={RAIN_COLOR} />
-					{#if i % LABEL_EVERY === 0 && (hour.precipitationProbability ?? 0) >= 10}
-						<text
-							x={xAt(i)}
-							y={RAIN_BOTTOM - rainHeight(hour.precipitationProbability) - 6}
-							text-anchor="middle"
-							fill={TEXT}
-							font-size="18"
-						>
-							{hour.precipitationProbability}%
-						</text>
-					{/if}
-				{/each}
-
-				{#each hours as hour, i (hour.time)}
-					{#if i % LABEL_EVERY === 0}
-						<text x={xAt(i)} y={TIME_Y} text-anchor="middle" fill={TEXT_MUTED} font-size="20">
-							{hourLabel(hour.time, i)}
-						</text>
-						{#if $configStore.weatherIconUrl}
-							<image
-								href={iconUrl(hour.iconId)}
-								x={xAt(i) - ICON_SIZE / 2}
-								y={ICON_Y}
-								width={ICON_SIZE}
-								height={ICON_SIZE}
-							/>
+					<path d={tempPath} fill="none" stroke={TEMP_COLOR} stroke-width={Math.max(2, px(3))} stroke-linejoin="round" stroke-linecap="round" />
+					{#each hours as hour, i (hour.time)}
+						{#if i % LABEL_EVERY === 0}
+							<circle cx={xAt(i)} cy={yForTemp(hour.temperature)} r={Math.max(4, px(5))} fill={TEMP_COLOR} />
+							<text
+								x={xAt(i)}
+								y={yForTemp(hour.temperature) - px(14)}
+								text-anchor="middle"
+								fill={TEXT}
+								font-size={px(22)}
+								font-weight="600"
+							>
+								{Math.round(hour.temperature)}°
+							</text>
 						{/if}
+					{/each}
+
+					<text x="0" y={layout.rainTitleY} fill={TEXT_MUTED} font-size={px(20)}>
+						{isGerman ? 'Regenwahrscheinlichkeit' : 'Chance of rain'}
+					</text>
+					<line x1="0" x2={chartWidth} y1={layout.rainBottom} y2={layout.rainBottom} stroke={GRID} stroke-width="1" />
+					{#if !hours.some((h) => (h.precipitationProbability ?? 0) > 0)}
+						<text
+							x={chartWidth / 2}
+							y={(layout.rainTop + layout.rainBottom) / 2 + px(7)}
+							text-anchor="middle"
+							fill={TEXT_MUTED}
+							font-size={px(20)}
+						>
+							{isGerman ? 'Kein Regen erwartet' : 'No rain expected'}
+						</text>
 					{/if}
-				{/each}
-			</svg>
-		{:else if failed}
-			<p style="margin-top: 3vh; font-size: 3vh; color: {TEXT_MUTED}">
-				{isGerman ? 'Vorhersage konnte nicht geladen werden.' : 'Could not load the forecast.'}
-			</p>
-		{:else}
-			<p style="margin-top: 3vh; font-size: 3vh; color: {TEXT_MUTED}">
-				{isGerman ? 'Lade Vorhersage …' : 'Loading forecast …'}
-			</p>
-		{/if}
+					{#each hours as hour, i (hour.time)}
+						<path d={barPath(padX + i * columnWidth + 1, columnWidth - 2, rainHeight(hour.precipitationProbability))} fill={RAIN_COLOR} />
+						{#if i % LABEL_EVERY === 0 && (hour.precipitationProbability ?? 0) >= 10}
+							<text
+								x={xAt(i)}
+								y={layout.rainBottom - rainHeight(hour.precipitationProbability) - px(6)}
+								text-anchor="middle"
+								fill={TEXT}
+								font-size={px(18)}
+							>
+								{hour.precipitationProbability}%
+							</text>
+						{/if}
+					{/each}
+
+					{#each hours as hour, i (hour.time)}
+						{#if i % LABEL_EVERY === 0}
+							<text x={xAt(i)} y={layout.timeY} text-anchor="middle" fill={TEXT_MUTED} font-size={px(20)}>
+								{hourLabel(hour.time, i)}
+							</text>
+							{#if $configStore.weatherIconUrl}
+								<image
+									href={iconUrl(hour.iconId)}
+									x={xAt(i) - layout.iconSize / 2}
+									y={layout.iconY}
+									width={layout.iconSize}
+									height={layout.iconSize}
+								/>
+							{/if}
+						{/if}
+					{/each}
+				</svg>
+			{:else if failed}
+				<p style="font-size: 3.4vh; color: {TEXT_MUTED}">
+					{isGerman ? 'Vorhersage konnte nicht geladen werden.' : 'Could not load the forecast.'}
+				</p>
+			{:else if !hours.length}
+				<p style="font-size: 3.4vh; color: {TEXT_MUTED}">
+					{isGerman ? 'Lade Vorhersage …' : 'Loading forecast …'}
+				</p>
+			{/if}
+		</div>
 
 		<!-- Next days -->
 		{#if nextDays.length}
-			<div class="grid" style="grid-template-columns: repeat({nextDays.length}, 1fr); gap: 2vw; border-top: 1px solid {GRID}; padding-top: 2vh">
+			<div
+				class="grid"
+				style="flex: none; grid-template-columns: repeat({nextDays.length}, 1fr); gap: 2vw; border-top: 1px solid {GRID}; padding-top: 2.5vh"
+			>
 				{#each nextDays as day, i (day.date)}
-					<div class="flex items-center" style="gap: 1vw; font-size: 3vh">
+					<div class="flex items-center" style="gap: 1vw; font-size: 3.4vh">
 						{#if $configStore.weatherIconUrl}
-							<img src={iconUrl(day.iconId)} alt="" style="width: 7vh; height: 7vh" />
+							<img src={iconUrl(day.iconId)} alt="" style="width: 8vh; height: 8vh" />
 						{/if}
 						<div style="line-height: 1.25; white-space: nowrap">
 							<div style="font-weight: 600">{dayName(day.date, i)}</div>
 							<div>
 								{Math.round(day.temperatureMax)}° / <span style="color: {TEXT_MUTED}">{Math.round(day.temperatureMin)}°</span>
 							</div>
-							<div style="font-size: 2.4vh; color: {TEXT_MUTED}">
+							<div style="font-size: 2.6vh; color: {TEXT_MUTED}">
 								{isGerman ? 'Regen' : 'Rain'}&nbsp;{day.precipitationProbability ?? 0}&nbsp;%
 							</div>
 						</div>
@@ -272,7 +303,7 @@
 			</div>
 		{/if}
 
-		<p style="margin-top: 1.5vh; text-align: center; font-size: 2.2vh; color: {TEXT_MUTED}">
+		<p style="flex: none; text-align: center; font-size: 2vh; color: {TEXT_MUTED}">
 			{isGerman ? 'Tippen zum Schließen' : 'Tap to close'}
 		</p>
 	</div>
