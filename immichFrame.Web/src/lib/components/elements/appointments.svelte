@@ -52,13 +52,16 @@
 {#if appointments}
 	<div
 		id="appointments"
-		class="fixed top-0 right-0 w-auto z-10 text-center text-frame-primary m-5 max-w-[20%] hidden md:block md:min-w-[10%]"
+		class="fixed top-0 right-0 w-auto z-10 text-center text-frame-primary max-w-[20%] hidden md:block md:min-w-[10%] drop-shadow-2xl p-5 pb-3
+		{$configStore.style == 'solid' ? 'bg-frame-secondary rounded-bl-2xl' : ''}
+		{$configStore.style == 'transition' ? 'bg-linear-to-l from-frame-secondary from-0% pl-10' : ''}
+		{$configStore.style == 'blur' ? 'backdrop-blur-lg rounded-bl-2xl' : ''}"
 		style="visibility: {$weatherOverlayOpenStore ? 'hidden' : 'visible'}"
 	>
 		<!-- <div class="text-4xl mx-8 font-bold">Appointments</div> -->
 		<div class="">
 			{#each appointments as appointment}
-				<div class="mb-2 text-left rounded-2xl p-3 drop-shadow-2xl text-shadow-sm {$configStore.style == 'blur' ? 'backdrop-blur-lg' : 'bg-frame-secondary'}">
+				<div class="mb-2 text-left p-1 text-shadow-sm">
 					<p class="text-xs">
 						{formatDates(appointment.startTime ?? '', appointment.endTime ?? '')}
 					</p>
