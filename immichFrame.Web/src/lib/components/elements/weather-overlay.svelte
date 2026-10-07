@@ -37,9 +37,19 @@
 		'display: inline-block; width: 0.2em; height: 0.2em; border-radius: 50%; background-color: currentColor; vertical-align: middle; margin: 0 0.5em';
 
 	const AUTO_CLOSE_MS = 60000;
-	// The overlay slides in from the bottom as one layer; only transform is animated, which older
-	// GPUs can do without redrawing the page every frame.
+	// 'slide': parked just below the screen and slid in as one layer.
+	// 'fade': lies on the screen at almost zero opacity, so the browser surely paints it ahead of
+	// time, and is faded in. Either way only transform/opacity change, which old GPUs can animate
+	// without redrawing the page every frame.
+	const ANIMATION: 'slide' | 'fade' = 'fade';
 	const SLIDE_MS = 450;
+	const FADE_MS = 350;
+
+	const animationStyle = $derived(
+		ANIMATION === 'slide'
+			? `transform: translateY(${open ? '0' : '100%'}); transition: transform ${SLIDE_MS}ms cubic-bezier(0.2, 0.8, 0.2, 1); will-change: transform`
+			: `opacity: ${open ? 1 : 0.01}; transition: opacity ${FADE_MS}ms ease-out; will-change: opacity`
+	);
 	const LABEL_EVERY = 2;
 	const NEXT_DAYS = 5;
 
@@ -165,7 +175,7 @@
 	id="weatheroverlay"
 	class="fixed inset-0"
 	aria-hidden={!open}
-	style="z-index: 300; background-color: {SCRIM}; pointer-events: {open ? 'auto' : 'none'}; transform: translateY({open ? '0' : '100%'}); transition: transform {SLIDE_MS}ms cubic-bezier(0.2, 0.8, 0.2, 1); will-change: transform"
+	style="z-index: 300; background-color: {SCRIM}; pointer-events: {open ? 'auto' : 'none'}; {animationStyle}"
 	onclick={onClose}
 >
 	<div
