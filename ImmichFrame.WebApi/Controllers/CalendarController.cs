@@ -25,5 +25,11 @@ namespace ImmichFrame.WebApi.Controllers
             _logger.LogDebug("Calendar requested by '{sanitizedClientIdentifier}'", sanitizedClientIdentifier);
             return await _calendarService.GetAppointments();
         }
+        [HttpGet("range", Name = "GetAppointmentsInRange")]
+        public async Task<List<IAppointment>> GetAppointmentsInRange(DateTime from, DateTime to, string clientIdentifier = "")
+        {
+            if (to <= from || (to - from).TotalDays > 400) return new List<IAppointment>();
+            return await _calendarService.GetAppointments(from, to);
+        }
     }
 }

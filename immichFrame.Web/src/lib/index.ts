@@ -1,5 +1,6 @@
 // place files you want to import through the `$lib` alias in this folder.
-import { defaults, type AssetTypeEnum } from './immichFrameApi.js';
+import { defaults, type AssetTypeEnum, type IAppointment } from './immichFrameApi.js';
+import { format } from 'date-fns';
 import { authSecretStore } from '$lib/stores/persist.store';
 import { get } from 'svelte/store';
 
@@ -114,6 +115,17 @@ export const deleteAsset = async (id: string, clientIdentifier?: string) => {
 		headers: authHeaders()
 	});
 	if (!res.ok) throw new Error(`Delete request failed: ${res.status}`);
+};
+
+/** Local date-time without zone, so the server reads it as its own local time. */
+const localIso = (d: Date) => format(d, "yyyy-MM-dd'T'HH:mm:ss");
+
+export const getAppointmentsInRange = async (from: Date, to: Date, clientIdentifier?: string) => {
+	const params = new URLSearchParams({ from: localIso(from), to: localIso(to) });
+	if (clientIdentifier) params.set('clientIdentifier', clientIdentifier);
+	const res = await fetch(`/api/Calendar/range?${params}`, { headers: authHeaders() });
+	if (!res.ok) throw new Error(`Calendar request failed: ${res.status}`);
+	return (await res.json()) as IAppointment[];
 };
 
 export const getBaseUrl = () => defaults.baseUrl;

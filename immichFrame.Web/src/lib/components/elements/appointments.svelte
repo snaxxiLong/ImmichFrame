@@ -5,6 +5,8 @@
 	import { configStore } from '$lib/stores/config.store';
 	import { clientIdentifierStore } from '$lib/stores/persist.store';
 	import { weatherOverlayOpenStore } from '$lib/stores/weather-overlay.store';
+	import { calendarOverlayOpenStore } from '$lib/stores/calendar-overlay.store';
+	import CalendarOverlay from './calendar-overlay.svelte';
 
 	api.init();
 
@@ -25,6 +27,16 @@
 	}
 
 	let appointments: api.IAppointment[] = $state() as api.IAppointment[];
+
+	// Tapping the appointments opens the month calendar; the slideshow keeps running behind it.
+	function openCalendar(event: MouseEvent) {
+		event.stopPropagation();
+		calendarOverlayOpenStore.set(true);
+	}
+
+	function closeCalendar() {
+		calendarOverlayOpenStore.set(false);
+	}
 
 	onMount(() => {
 		GetAppointments();
@@ -56,7 +68,8 @@
 		{$configStore.style == 'solid' ? 'bg-frame-secondary rounded-bl-2xl' : ''}
 		{$configStore.style == 'transition' ? 'bg-linear-to-l from-frame-secondary from-0% pl-10' : ''}
 		{$configStore.style == 'blur' ? 'backdrop-blur-lg rounded-bl-2xl' : ''}"
-		style="visibility: {$weatherOverlayOpenStore ? 'hidden' : 'visible'}"
+		style="z-index: 110; pointer-events: auto; cursor: pointer; visibility: {$weatherOverlayOpenStore || $calendarOverlayOpenStore ? 'hidden' : 'visible'}"
+		onclick={openCalendar}
 	>
 		<!-- <div class="text-4xl mx-8 font-bold">Appointments</div> -->
 		<div class="">
@@ -74,3 +87,5 @@
 		</div>
 	</div>
 {/if}
+
+<CalendarOverlay open={$calendarOverlayOpenStore} onClose={closeCalendar} />

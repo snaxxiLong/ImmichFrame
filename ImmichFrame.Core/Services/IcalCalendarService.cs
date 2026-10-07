@@ -12,6 +12,7 @@ public class IcalCalendarService : ICalendarService
     private readonly ILogger<IcalCalendarService> _logger;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ApiCache _appointmentCache = new(TimeSpan.FromMinutes(15));
+    private readonly ApiCache _parsedCache = new(TimeSpan.FromMinutes(15));
 
     public IcalCalendarService(IGeneralSettings serverSettings, ILogger<IcalCalendarService> logger, IHttpClientFactory httpClientFactory)
     {
@@ -25,7 +26,31 @@ public class IcalCalendarService : ICalendarService
         return await _appointmentCache.GetOrAddAsync("appointments", async () =>
         {
             var appointments = new List<IAppointment>();
+            foreach (var calendar in await GetParsedCalendars())
+            {
+                appointments.AddRange(calendar.GetOccurrences(DateTime.Today, DateTime.Today.AddDays(1)).Select(x => x.ToAppointment()));
+            }
 
+            return appointments;
+        });
+    }
+
+    /// <summary>Appointments overlapping [from, to), e.g. a visible month in the calendar view.</summary>
+    public async Task<List<IAppointment>> GetAppointments(DateTime from, DateTime to)
+    {
+        var appointments = new List<IAppointment>();
+        foreach (var calendar in await GetParsedCalendars())
+        {
+            appointments.AddRange(calendar.GetOccurrences(from, to).Select(x => x.ToAppointment()));
+        }
+
+        return appointments;
+    }
+
+    private async Task<List<Calendar>> GetParsedCalendars()
+    {
+        return await _parsedCache.GetOrAddAsync("parsed", async () =>
+        {
             List<(string? auth, string url)> cals = _serverSettings.Webcalendars.Select<string, (string? auth, string url)?>(x =>
             {
                 try
@@ -47,14 +72,7 @@ public class IcalCalendarService : ICalendarService
 
             var icals = await GetCalendars(cals);
 
-            foreach (var ical in icals)
-            {
-                var calendar = Calendar.Load(ical);
-
-                appointments.AddRange(calendar.GetOccurrences(DateTime.Today, DateTime.Today.AddDays(1)).Select(x => x.ToAppointment()));
-            }
-
-            return appointments;
+            return icals.Select(ical => Calendar.Load(ical)).ToList();
         });
     }
 
