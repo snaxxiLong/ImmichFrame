@@ -57,7 +57,8 @@
 
 	const hours = $derived(details?.hours ?? []);
 	const today = $derived(details?.days?.[0]);
-	const nextDays = $derived((details?.days ?? []).slice(1, 4));
+	const NEXT_DAYS = 5;
+	const nextDays = $derived((details?.days ?? []).slice(1, 1 + NEXT_DAYS));
 
 	// Side padding so the 00:00 and 24:00 labels are not cut off at the edges.
 	const PAD_X = 28;

@@ -143,7 +143,8 @@ public class OpenWeatherMapService : IWeatherService
     };
 
     private const int DetailHours = 25;
-    private const int DetailDays = 4;
+    // Today plus the next five days.
+    private const int DetailDays = 6;
 
     public async Task<WeatherDetails> GetWeatherDetails()
     {
