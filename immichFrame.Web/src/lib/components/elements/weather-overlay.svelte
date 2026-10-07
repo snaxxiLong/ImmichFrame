@@ -38,7 +38,7 @@
 	const AUTO_CLOSE_MS = 60000;
 	// The overlay slides in from the bottom as one layer; only transform is animated, which older
 	// GPUs can do without redrawing the page every frame.
-	const SLIDE_MS = 280;
+	const SLIDE_MS = 450;
 	const LABEL_EVERY = 2;
 	const NEXT_DAYS = 5;
 
