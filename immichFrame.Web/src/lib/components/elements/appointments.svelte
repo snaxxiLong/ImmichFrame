@@ -110,7 +110,7 @@
 	<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 	<div
 		id="appointments"
-		class="fixed top-0 right-0 w-auto text-frame-primary max-w-[19%] hidden md:block md:min-w-[10%] pt-4"
+		class="fixed top-0 right-0 w-min text-frame-primary hidden md:block md:min-w-[14%] pt-4"
 		style="z-index: 110; pointer-events: auto; cursor: pointer; visibility: {$weatherOverlayOpenStore || $calendarOverlayOpenStore ? 'hidden' : 'visible'}"
 		onclick={openCalendar}
 	>
