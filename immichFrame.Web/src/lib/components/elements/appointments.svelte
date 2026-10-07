@@ -110,7 +110,7 @@
 	<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 	<div
 		id="appointments"
-		class="fixed top-0 right-0 w-auto text-frame-primary max-w-[24%] hidden md:block md:min-w-[10%] pt-4"
+		class="fixed top-0 right-0 w-auto text-frame-primary max-w-[19%] hidden md:block md:min-w-[10%] pt-4"
 		style="z-index: 110; pointer-events: auto; cursor: pointer; visibility: {$weatherOverlayOpenStore || $calendarOverlayOpenStore ? 'hidden' : 'visible'}"
 		onclick={openCalendar}
 	>
@@ -122,7 +122,7 @@
 				{$configStore.style == 'transition' ? 'bg-linear-to-l from-frame-secondary from-40% pl-6' : ''}
 				{$configStore.style == 'blur' ? 'backdrop-blur-lg rounded-l-2xl' : ''}"
 			>
-				<p class="text-[11px] font-light opacity-75">{whenLabel(appointment)}</p>
+				<p class="text-[11px] font-light opacity-75 whitespace-nowrap">{whenLabel(appointment)}</p>
 				<p class="text-sm leading-snug">{appointment.summary}</p>
 			</div>
 		{/each}
