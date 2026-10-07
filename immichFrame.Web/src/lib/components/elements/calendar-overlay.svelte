@@ -1,6 +1,6 @@
 <script lang="ts">
 	import * as api from '$lib/index';
-	import { untrack } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import {
 		addDays,
 		addMonths,
@@ -24,7 +24,7 @@
 	let { open, onClose }: Props = $props();
 
 	// Plain colors: older Android WebViews ignore Tailwind's oklch() palette.
-	const SCRIM = 'rgba(0, 0, 0, 0.93)';
+	const SCRIM = 'rgba(0, 0, 0, 0.72)';
 	const SHADOW = 'rgba(0, 0, 0, 0.85)';
 	const TEXT = '#f5f5f5';
 	const TEXT_MUTED = '#b8b8b8';
@@ -33,7 +33,8 @@
 	const ACCENT_BG = 'rgba(58, 133, 208, 0.38)';
 	const TODAY_BG = '#c2821a';
 	const SELECTED_BG = 'rgba(255, 255, 255, 0.12)';
-	const FADE_MS = 300;
+	const SLIDE_MS = 420;
+	const REFRESH_MS = 10 * 60 * 1000;
 	const AUTO_CLOSE_MS = 120000;
 	const MAX_CHIPS = 3;
 
@@ -50,6 +51,7 @@
 	const dateLocale = $derived(locale[$configStore.language as keyof typeof locale] ?? locale.enUS);
 	const timeFormat = $derived(($configStore.clockFormat ?? 'HH:mm:ss').replace(/[:.]ss$/, ''));
 
+	let nowDate = $state(new Date());
 	let month = $state(startOfMonth(new Date()));
 	let selected = $state(startOfDay(new Date()));
 	let events = $state<CalEvent[]>([]);
@@ -142,6 +144,7 @@
 
 	function today() {
 		const now = new Date();
+		nowDate = now;
 		selected = startOfDay(now);
 		goTo(now);
 	}
@@ -150,6 +153,15 @@
 		selected = day;
 		if (!isSameMonth(day, month)) goTo(day);
 	}
+
+	// The overlay stays mounted and loaded, so opening only slides the finished layer in.
+	onMount(() => {
+		load();
+		const refresh = setInterval(() => {
+			if (!open) load();
+		}, REFRESH_MS);
+		return () => clearInterval(refresh);
+	});
 
 	// Every time the calendar opens: jump to today and refresh; close by itself after a while.
 	let idleTimer: ReturnType<typeof setTimeout> | undefined;
@@ -169,17 +181,18 @@
 	});
 </script>
 
-{#if open}
-	<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 	<div
 		id="calendaroverlay"
 		class="fixed inset-0"
-		style="z-index: 300; background-color: {SCRIM}; animation: calendar-fade {FADE_MS}ms ease-out; color: {TEXT}; text-shadow: 0 1px 4px {SHADOW}"
+		aria-hidden={!open}
+		style="z-index: 300; background-color: {SCRIM}; pointer-events: {open ? 'auto' : 'none'}; transform: translate3d({open ? '0' : '100%'}, 0, 0); transition: transform {SLIDE_MS}ms cubic-bezier(0.2, 0.8, 0.2, 1); will-change: transform; color: {TEXT}; text-shadow: 0 1px 4px {SHADOW}"
 		onclick={(e) => {
 			e.stopPropagation();
 			resetIdle();
 		}}
 	>
+		<button class="nav close" onclick={onClose} aria-label="close">✕</button>
 		<div
 			class="flex"
 			style="width: 100vw; height: 100vh; padding: 3vh 2.5vw; box-sizing: border-box; gap: 2vw"
@@ -193,7 +206,6 @@
 					<button class="nav" onclick={() => goTo(addMonths(month, -1))} aria-label="previous">‹</button>
 					<button class="nav today" onclick={today}>{isGerman ? 'Heute' : 'Today'}</button>
 					<button class="nav" onclick={() => goTo(addMonths(month, 1))} aria-label="next">›</button>
-					<button class="nav" onclick={onClose} aria-label="close">✕</button>
 				</div>
 
 				<div class="grid" style="flex: none; grid-template-columns: repeat(7, 1fr); color: {TEXT_MUTED}; font-size: 2.4vh; text-align: center">
@@ -216,7 +228,7 @@
 						>
 							<div
 								class="daynum"
-								style={isSameDay(day, new Date()) ? `background-color: ${TODAY_BG}; color: #fff` : ''}
+								style={isSameDay(day, nowDate) ? `background-color: ${TODAY_BG}; color: #fff` : ''}
 							>
 								{format(day, 'd')}
 							</div>
@@ -234,7 +246,7 @@
 			<!-- Selected day -->
 			<div
 				class="flex flex-col"
-				style="flex: 0 0 29vw; min-width: 0; gap: 1.5vh; border-left: 1px solid {GRID}; padding-left: 2vw"
+				style="flex: 0 0 29vw; min-width: 0; gap: 1.5vh; border-left: 1px solid {GRID}; padding-left: 2vw; padding-top: 7vh"
 			>
 				<div style="flex: none">
 					<div style="font-size: 3vh; color: {TEXT_MUTED}; text-transform: capitalize">
@@ -272,18 +284,8 @@
 			</div>
 		</div>
 	</div>
-{/if}
 
 <style>
-	@keyframes calendar-fade {
-		from {
-			opacity: 0;
-		}
-		to {
-			opacity: 1;
-		}
-	}
-
 	.nav {
 		flex: none;
 		min-width: 6vh;
@@ -295,6 +297,13 @@
 		color: inherit;
 		font-size: 3vh;
 		line-height: 1;
+	}
+
+	.close {
+		position: absolute;
+		top: 2.2vh;
+		right: 1.8vw;
+		z-index: 1;
 	}
 
 	.nav.today {
