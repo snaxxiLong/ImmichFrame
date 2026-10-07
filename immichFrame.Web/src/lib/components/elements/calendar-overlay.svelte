@@ -34,7 +34,9 @@
 	const ACCENT_BG = 'rgba(58, 133, 208, 0.38)';
 	const TODAY_BG = '#c2821a';
 	const SELECTED_BG = 'rgba(255, 255, 255, 0.12)';
-	const SLIDE_MS = 420;
+	// Lies on the screen at almost zero opacity (1/255, invisible) so the browser paints it ahead of time;
+	// opening only fades the finished layer in, like the weather overview.
+	const FADE_MS = 350;
 	const REFRESH_MS = 10 * 60 * 1000;
 	const AUTO_CLOSE_MS = 120000;
 	const MAX_CHIPS = 3;
@@ -190,7 +192,7 @@
 		id="calendaroverlay"
 		class="fixed inset-0"
 		aria-hidden={!open}
-		style="z-index: 300; background-color: {SCRIM}; pointer-events: {open ? 'auto' : 'none'}; transform: translate3d({open ? '0' : '100%'}, 0, 0); transition: transform {SLIDE_MS}ms cubic-bezier(0.2, 0.8, 0.2, 1); will-change: transform; color: {TEXT}; text-shadow: 0 1px 4px {SHADOW}"
+		style="z-index: 300; background-color: {SCRIM}; pointer-events: {open ? 'auto' : 'none'}; opacity: {open ? 1 : 0.004}; transition: opacity {FADE_MS}ms ease-out; will-change: opacity; color: {TEXT}; text-shadow: 0 1px 4px {SHADOW}"
 		onclick={(e) => {
 			e.stopPropagation();
 			resetIdle();
