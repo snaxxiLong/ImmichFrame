@@ -125,6 +125,13 @@
 			: format(new Date(iso), 'EEEE', { locale: dateLocale });
 
 	onMount(() => {
+		requestAnimationFrame(() =>
+			requestAnimationFrame(() =>
+				console.info(
+					`wx-latency ${Math.round(performance.now() - ((window as unknown as { __wxTap?: number }).__wxTap ?? 0))}ms`
+				)
+			)
+		);
 		if (!hasData(preloaded)) {
 			api
 				.getWeatherDetails($clientIdentifierStore)
