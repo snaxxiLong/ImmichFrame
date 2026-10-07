@@ -36,6 +36,9 @@
 		'display: inline-block; width: 0.2em; height: 0.2em; border-radius: 50%; background-color: currentColor; vertical-align: middle; margin: 0 0.5em';
 
 	const AUTO_CLOSE_MS = 60000;
+	// The overlay slides in from the bottom as one layer; only transform is animated, which older
+	// GPUs can do without redrawing the page every frame.
+	const SLIDE_MS = 280;
 	const LABEL_EVERY = 2;
 	const NEXT_DAYS = 5;
 
@@ -160,7 +163,7 @@
 <div
 	id="weatheroverlay"
 	class="fixed inset-0"
-	style="z-index: 300; background-color: {SCRIM}; visibility: {open ? 'visible' : 'hidden'}; pointer-events: {open ? 'auto' : 'none'}"
+	style="z-index: 300; background-color: {SCRIM}; visibility: {open ? 'visible' : 'hidden'}; pointer-events: {open ? 'auto' : 'none'}; transform: translateY({open ? '0' : '100%'}); transition: transform {SLIDE_MS}ms cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s linear {open ? 0 : SLIDE_MS}ms; will-change: transform"
 	onclick={onClose}
 >
 	<div
