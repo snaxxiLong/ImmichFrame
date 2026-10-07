@@ -117,13 +117,13 @@
 		{#each upcoming as appointment}
 			<!-- Every appointment on its own background, with a small gap in between -->
 			<div
-				class="mb-2 text-left drop-shadow-2xl text-shadow-sm py-3 pr-2 pl-3
+				class="mb-2 text-left drop-shadow-2xl text-shadow-sm py-2 pr-2 pl-3
 				{$configStore.style == 'solid' ? 'bg-frame-secondary rounded-l-2xl' : ''}
 				{$configStore.style == 'transition' ? 'bg-linear-to-l from-frame-secondary from-40% pl-6' : ''}
 				{$configStore.style == 'blur' ? 'backdrop-blur-lg rounded-l-2xl' : ''}"
 			>
-				<p class="text-xs font-light opacity-75">{whenLabel(appointment)}</p>
-				<p class="text-lg leading-snug">{appointment.summary}</p>
+				<p class="text-[11px] font-light opacity-75">{whenLabel(appointment)}</p>
+				<p class="text-sm leading-snug">{appointment.summary}</p>
 			</div>
 		{/each}
 	</div>
