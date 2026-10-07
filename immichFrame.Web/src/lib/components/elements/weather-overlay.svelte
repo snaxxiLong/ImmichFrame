@@ -258,11 +258,13 @@
 						{#if $configStore.weatherIconUrl}
 							<img src={iconUrl(day.iconId)} alt="" style="width: 7vh; height: 7vh" />
 						{/if}
-						<div>
+						<div style="line-height: 1.25; white-space: nowrap">
 							<div style="font-weight: 600">{dayName(day.date, i)}</div>
 							<div>
 								{Math.round(day.temperatureMax)}° / <span style="color: {TEXT_MUTED}">{Math.round(day.temperatureMin)}°</span>
-								<span style="color: {TEXT_MUTED}"><span style={SEPARATOR}></span>{day.precipitationProbability ?? 0}%</span>
+							</div>
+							<div style="font-size: 2.4vh; color: {TEXT_MUTED}">
+								{isGerman ? 'Regen' : 'Rain'}&nbsp;{day.precipitationProbability ?? 0}&nbsp;%
 							</div>
 						</div>
 					</div>
