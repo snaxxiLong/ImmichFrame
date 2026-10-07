@@ -6,6 +6,7 @@
 		addMonths,
 		endOfMonth,
 		format,
+		getISOWeek,
 		isSameDay,
 		isSameMonth,
 		startOfDay,
@@ -37,6 +38,7 @@
 	const REFRESH_MS = 10 * 60 * 1000;
 	const AUTO_CLOSE_MS = 120000;
 	const MAX_CHIPS = 3;
+	const KW_WIDTH = '3.2vw';
 
 	interface CalEvent {
 		start: Date;
@@ -62,6 +64,8 @@
 	// Monday-first grid that always shows six full weeks, like the Samsung calendar.
 	const gridStart = $derived(startOfWeek(month, { weekStartsOn: 1 }));
 	const days = $derived(Array.from({ length: 42 }, (_, i) => addDays(gridStart, i)));
+	// ISO week of each grid row (weeks start on Monday, so the Monday decides).
+	const weekNumbers = $derived(Array.from({ length: 6 }, (_, w) => getISOWeek(days[w * 7])));
 	const weekdays = $derived(days.slice(0, 7).map((d) => format(d, 'EEEEEE', { locale: dateLocale })));
 
 	const isAllDay = (e: api.IAppointment, start: Date, end: Date) =>
@@ -208,15 +212,24 @@
 					<button class="nav" onclick={() => goTo(addMonths(month, 1))} aria-label="next">›</button>
 				</div>
 
-				<div class="grid" style="flex: none; grid-template-columns: repeat(7, 1fr); color: {TEXT_MUTED}; font-size: 2.4vh; text-align: center">
+				<div class="flex" style="flex: none; color: {TEXT_MUTED}; font-size: 2.4vh; text-align: center">
+					<div style="flex: 0 0 {KW_WIDTH}; font-size: 1.9vh; line-height: 3.2vh">{isGerman ? 'KW' : 'Wk'}</div>
+					<div class="grid" style="flex: 1 1 auto; grid-template-columns: repeat(7, 1fr)">
 					{#each weekdays as name}
 						<div>{name}</div>
 					{/each}
+					</div>
 				</div>
 
+				<div class="flex" style="flex: 1 1 auto; min-height: 0">
+				<div class="grid" style="flex: 0 0 {KW_WIDTH}; grid-template-rows: repeat(6, 1fr); border-top: 1px solid transparent; color: {TEXT_MUTED}; font-size: 2vh; text-align: center">
+					{#each weekNumbers as week}
+						<div style="padding-top: 0.8vh">{week}</div>
+					{/each}
+				</div>
 				<div
 					class="grid"
-					style="flex: 1 1 auto; min-height: 0; grid-template-columns: repeat(7, 1fr); grid-template-rows: repeat(6, 1fr); border-top: 1px solid {GRID}; border-left: 1px solid {GRID}"
+					style="flex: 1 1 auto; min-width: 0; grid-template-columns: repeat(7, 1fr); grid-template-rows: repeat(6, 1fr); border-top: 1px solid {GRID}; border-left: 1px solid {GRID}"
 				>
 					{#each days as day (day.getTime())}
 						{@const list = eventsOf(day)}
@@ -240,6 +253,7 @@
 							{/if}
 						</div>
 					{/each}
+				</div>
 				</div>
 			</div>
 
