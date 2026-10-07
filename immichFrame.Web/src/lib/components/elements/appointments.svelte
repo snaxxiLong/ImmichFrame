@@ -11,7 +11,7 @@
 
 	api.init();
 
-	const SHOW_COUNT = 3;
+	const SHOW_COUNT = 4;
 	const LOOKAHEAD_DAYS = 60;
 
 	interface Upcoming {
@@ -40,7 +40,9 @@
 		calendarOverlayOpenStore.set(false);
 	}
 
-	const upcoming = $derived(events.filter((e) => e.end.getTime() > now.getTime()).slice(0, SHOW_COUNT));
+	// Everything from today on, including today's appointments that are already over (shown dimmed).
+	const upcoming = $derived(events.filter((e) => e.end.getTime() > startOfDay(now).getTime()).slice(0, SHOW_COUNT));
+	const isOver = (e: Upcoming) => !e.allDay && e.end.getTime() <= now.getTime();
 
 	const dayWord = (day: Date) => {
 		const today = startOfDay(now);
@@ -116,6 +118,7 @@
 		{#each upcoming as appointment}
 			<!-- Every appointment on its own background, with a small gap in between -->
 			<div
+				style="opacity: {isOver(appointment) ? 0.55 : 1}"
 				class="mb-2 text-left drop-shadow-2xl text-shadow-sm p-3
 				{$configStore.style == 'solid' ? 'bg-frame-secondary rounded-l-2xl' : ''}
 				{$configStore.style == 'transition' ? 'bg-linear-to-l from-frame-secondary from-50% pl-12' : ''}
