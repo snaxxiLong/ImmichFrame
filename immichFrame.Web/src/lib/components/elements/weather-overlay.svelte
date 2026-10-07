@@ -151,12 +151,6 @@
 	$effect(() => {
 		if (!open) return;
 		nowMs = Date.now();
-		requestAnimationFrame(() =>
-			requestAnimationFrame(() => {
-				const ms = Math.round(performance.now() - ((window as unknown as { __wxTap?: number }).__wxTap ?? 0));
-				api.getScreenBrightness(`wxlat${ms}ms`).catch(() => {});
-			})
-		);
 		const timeout = setTimeout(onClose, AUTO_CLOSE_MS);
 		return () => clearTimeout(timeout);
 	});
@@ -171,7 +165,7 @@
 >
 	<div
 		class="flex flex-col"
-		style="width: 100vw; height: 100vh; padding: 3.5vh 3.5vw 2vh; box-sizing: border-box; gap: 2.5vh; color: {TEXT}"
+		style="width: 100vw; height: 100vh; padding: 3.5vh 3.5vw 2vh; box-sizing: border-box; gap: 2.5vh; color: {TEXT}; text-shadow: 0 1px 4px {SHADOW}"
 	>
 		<!-- Now and today -->
 		<div class="flex items-center justify-between" style="flex: none; gap: 3vw">

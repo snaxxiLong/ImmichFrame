@@ -18,7 +18,6 @@
 	// clock is hidden while the big weather view is open.
 	function openWeatherOverlay(event: MouseEvent) {
 		event.stopPropagation();
-		(window as unknown as { __wxTap?: number }).__wxTap = performance.now();
 		weatherOverlayOpen = true;
 	}
 
