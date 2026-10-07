@@ -59,6 +59,10 @@
 			if (isSameDay(e.start, lastDay)) return dayWord(e.start);
 			return `${dayWord(e.start)} – ${dayWord(lastDay)}`;
 		}
+		// Already running over several days: show when it ends.
+		if (!isSameDay(e.start, e.end) && e.start.getTime() < now.getTime()) {
+			return `${isGerman ? 'Bis ' : 'Until '}${dayWord(e.end)} ${format(e.end, timeFormat)}`;
+		}
 		return isSameDay(e.start, e.end)
 			? `${dayWord(e.start)} ${format(e.start, timeFormat)} – ${format(e.end, timeFormat)}`
 			: `${dayWord(e.start)} ${format(e.start, timeFormat)}`;
@@ -114,7 +118,7 @@
 			<div
 				class="mb-2 text-left drop-shadow-2xl text-shadow-sm p-3
 				{$configStore.style == 'solid' ? 'bg-frame-secondary rounded-l-2xl' : ''}
-				{$configStore.style == 'transition' ? 'bg-linear-to-l from-frame-secondary from-0% pl-10' : ''}
+				{$configStore.style == 'transition' ? 'bg-linear-to-l from-frame-secondary from-50% pl-12' : ''}
 				{$configStore.style == 'blur' ? 'backdrop-blur-lg rounded-l-2xl' : ''}"
 			>
 				<p class="text-xs font-light opacity-75">{whenLabel(appointment)}</p>
