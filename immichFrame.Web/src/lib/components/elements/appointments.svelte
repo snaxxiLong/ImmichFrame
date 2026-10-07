@@ -58,7 +58,7 @@
 		<!-- <div class="text-4xl mx-8 font-bold">Appointments</div> -->
 		<div class="">
 			{#each appointments as appointment}
-				<div class="bg-gray-600/90 mb-2 text-left rounded-md p-3">
+				<div class="mb-2 text-left rounded-2xl p-3 drop-shadow-2xl text-shadow-sm {$configStore.style == 'blur' ? 'backdrop-blur-lg' : 'bg-frame-secondary'}">
 					<p class="text-xs">
 						{formatDates(appointment.startTime ?? '', appointment.endTime ?? '')}
 					</p>
