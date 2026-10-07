@@ -24,7 +24,7 @@
 	let { open, onClose }: Props = $props();
 
 	// Plain colors: older Android WebViews ignore Tailwind's oklch() palette.
-	const SCRIM = 'rgba(0, 0, 0, 0.82)';
+	const SCRIM = 'rgba(0, 0, 0, 0.93)';
 	const SHADOW = 'rgba(0, 0, 0, 0.85)';
 	const TEXT = '#f5f5f5';
 	const TEXT_MUTED = '#b8b8b8';

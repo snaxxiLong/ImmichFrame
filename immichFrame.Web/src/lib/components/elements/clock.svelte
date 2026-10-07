@@ -6,6 +6,7 @@
 	import { configStore } from '$lib/stores/config.store';
 	import { clientIdentifierStore } from '$lib/stores/persist.store';
 	import { weatherOverlayOpenStore } from '$lib/stores/weather-overlay.store';
+	import { calendarOverlayOpenStore } from '$lib/stores/calendar-overlay.store';
 	import WeatherOverlay from './weather-overlay.svelte';
 
 	api.init();
@@ -101,7 +102,7 @@
 	{$configStore.style == 'transition' ? 'bg-linear-to-r from-frame-secondary from-0% pr-10' : ''}
 	{$configStore.style == 'blur' ? 'backdrop-blur-lg rounded-tr-2xl' : ''}	
 	drop-shadow-2xl p-3"
-	style="z-index: 110; pointer-events: none; visibility: {weatherOverlayOpen ? 'hidden' : 'visible'}"
+	style="z-index: 110; pointer-events: none; visibility: {weatherOverlayOpen || $calendarOverlayOpenStore ? 'hidden' : 'visible'}"
 >
 	<p id="clockdate" class="mt-2 text-sm sm:text-sm md:text-md lg:text-xl font-thin text-shadow-sm">
 		{formattedDate()}
