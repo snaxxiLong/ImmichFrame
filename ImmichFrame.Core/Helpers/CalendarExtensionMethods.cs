@@ -10,7 +10,12 @@ namespace ImmichFrame.WebApi.Helpers
         public static IAppointment ToAppointment(this Occurrence occurrence)
         {
             if (occurrence.Source.GetType() == typeof(CalendarEvent)) {
-                return ((CalendarEvent)occurrence.Source).ToAppointment();
+                // For recurring events the master event carries the first start; use this occurrence's period.
+                var appointment = ((CalendarEvent)occurrence.Source).ToAppointment();
+                appointment.StartTime = occurrence.Period.StartTime.AsSystemLocal;
+                appointment.EndTime = occurrence.Period.EndTime.AsSystemLocal;
+                appointment.Duration = occurrence.Period.Duration;
+                return appointment;
             }
 
             return new Appointment
@@ -23,7 +28,7 @@ namespace ImmichFrame.WebApi.Helpers
                 Location = ""
             };
         }
-        public static IAppointment ToAppointment(this CalendarEvent calEvent)
+        public static Appointment ToAppointment(this CalendarEvent calEvent)
         {
             return new Appointment
             {
